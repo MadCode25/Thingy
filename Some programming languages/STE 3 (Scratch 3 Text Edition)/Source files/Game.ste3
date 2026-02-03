@@ -1,0 +1,4 @@
+say("The Impossible Quiz")
+say("(Also if it says correct and wrong it means you are wrong, but if only correct you are correct)")
+ans1 = ask("How many holes are there in a polo?: ")
+IF(ans1=="4",say("Correct!"),say("Wrong!"))

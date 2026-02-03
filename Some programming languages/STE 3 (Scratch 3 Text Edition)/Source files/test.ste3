@@ -1,0 +1,7 @@
+wannaPlay = ""
+say("Sum of 2 and 90 is ", add(2, 90))
+say("Hello Blaze")
+say("Do you want to play?")
+setVar("wannaPlay", ask("Yes/No: "))
+IF (wannaPlay == "Yes", say("Whoopie!"), say("Huh? wdym?"))
+IF (wannaPlay == "No", say("Ok"), say("Huh? wdym?))

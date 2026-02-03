@@ -1,0 +1,13 @@
+Ma, or Pa, Please do not delete this folder,
+it contains all of the files that makes my programming
+language work, which is C- (file extension is .cms).
+
+So please, do not touch, delete, or do anything to the content to this file, especially VSCode.
+
+Bisaya:
+
+Ma, o Pa, Palihug ayaw i-delete ning folder,
+ang sulod ani kay mga files nga ma himo niya nga mo work
+ang akong programming language (ang file extension kay .cms).
+
+So palihug lang, ayaw hilabti, delete, or bisag unsa nimo buhaton ninyo aning folder, asta pud ang VSCode.

@@ -1,0 +1,12 @@
+!-- 
+=======================================
+      C Minus Source code
+=======================================
+--!
+
+printf("Hello! I would like to know your name.\n") <-- Prints Hello World to console
+wannaBeFrnd = userInput("Enter your name here: ") <-- Takes user input and stores in variable
+printf("Salutations, " + wannaBeFrnd + "!") <-- Prints Welcome message with user
+printf("Do you have friends? I would like to know their name.")
+friends = userInput("Maybe only one friend: ")
+printf("Oh, nice, your friend's name is " + friends + "!")

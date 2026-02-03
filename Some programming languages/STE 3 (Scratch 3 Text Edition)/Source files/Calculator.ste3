@@ -1,0 +1,8 @@
+say("STE3 Calculator (Scratch3 Text Edition Calculator)")
+a = ask("Enter your first number: ")
+b = ask("Enter your second number: ")
+sum = add(a,b)
+
+
+say("Sum of ", a, " and ", b, " is ", sum)
+
