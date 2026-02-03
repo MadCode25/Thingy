@@ -1,0 +1,15 @@
+TOP 3 DESMOS MATHS SOUNDS I LIKE 
+1. f\left(x\right)\ =\ \gcd\left(x,16\right)
+2. f\left(p\right)\ =\ \sin\left(p\right)\cdot\frac{1}{\gcd\left(p^{10}\right)}\ -\ \cos\left(\sin\left(p\left(2\right)\right)\right) 
+3. f\left(z\right)\ =\ -\ \frac{24}{\pi}\sum_{n=0}^{10}\frac{\sin\left(\left(2n+1\right)z\right)}{2n+1}
+4. f\left(s\right)\ =\ \frac{1}{\left|\sin\left(2s\right)\right|}\ +\ \left|s\right|
+
+BEAUTIFUL MUSICAL ONE:
+1. f\left(x\right)\ =\ \gcd\left(x,18\right)
+I MEAN, IT'S ALRIGHT I GUESS...:
+1. f\left(t\right)\ =\ 5\cos\left(\sin t\ \cdot\ 2\right)
+2. f\left(y\right)\ =\ y\ -\ 5\sin y\ 
+
+
+BONUS: POOR SKELETON GOT HARRASED :(
+How to draw hand bones-drawing anatomy for artist at 3:16

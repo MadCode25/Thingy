@@ -1,0 +1,22 @@
+import basic_os as os
+ticks = os.clock_tick = 1000ms
+time += ticks.slice("000ms")
+a = os.add_dir("A.")
+a_games = os.add_dir("A.GAMES")
+a_utils = os.add_dir("A.UTILS")
+a_user = os.add_dir("A.USER")
+os.cd("A.")
+all_directories = a, a_games, a_utils
+
+func ActivateSim(){
+
+    os.classify[all_directories*]
+    if time === 3{
+        os.load_user_files(a, a_games, a_utils)
+        print("BBC COMPUTER 32K")
+        print("MODEL B)
+        print("BASIC")
+    }
+
+}
+// File lines from 21 to 188 successfully hidden.
