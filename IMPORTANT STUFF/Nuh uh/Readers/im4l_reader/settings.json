@@ -1,0 +1,22 @@
+{
+    "_comment": "You found the alphabet! Copy it to your cipher decoder and shift notes by 8 to encode an IM4L file. Or if you're not lazy just type the whole alphabet without the double qoutes and comma.",
+    "commands": [
+        {
+            "command": "im4l_readable.cmds",
+            "event": "This .im4l file contains important commands. Most of these types of .im4l files are used for containing long commands, such as upgrading, or compiling software, and C files."
+        },
+        {
+            "command": "im4l_readable.debug_stuff",
+            "event": "This .im4l file contains debug information. These types of .im4l files are often used by developers to troubleshoot issues within software or systems."
+        },
+        {
+            "command": "im4l_readable.code_info",
+            "event": "This .im4l file contains code information of a specific file. Usually, these files tell you the name, and purpose, but some might not."
+        },
+        {
+            "command": "im4l_readable.password",
+            "event": "This .im4l file contains private password(s), if M4 allowed you to crack open this file, sure, you might see his passwords (NOT ALLOWED, UNLESS THE MESSAGE CAME FROM M4'S FB PAGE)."
+        }
+    ],
+    "alphabet": ["a","b","c","d","e","f","g","h","i","j","k","l","m","n","o","p","q","r","s","t","u","v","w","x","y","z","1","5","9","6"]
+}

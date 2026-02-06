@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <link href="https://fonts.googleapis.com/css2?family=Audiowide&display=swap" rel="stylesheet">
+    <title>G-OS | Official</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+      <br id="timeSeperator">
+      <h1 class="title" id="welcome">Welcome</h1>
+      <p id="passHint">The password is the creator of the OS.</p>
+      <input placeholder="Password (max 10)" id="password" maxlength="10"></input>
+      <button id="login" onclick="matchPassword()">Login</button>
+      <p id="loggingIn"></p>
+      <p id="currentTime"></p>
+      <!-- Get Started -->
+      <div class="window" id="getStarted">
+        <h1>Get started with G-OS</h1>
+        <p>Hi, welcome to G-OS, you can do anything, here are things you can do.</p>
+        <p>First, you can open any app, to close that specific app, click the icon where it came from. <br> Second, you can log out anytime. <br> Third, you can customize this OS, change the audio, or commands, and etc. <br> Tip: Press F11 (full screen) for a better interface, you can change back by pressing F11 again.</p>
+        <p>G-OS Build 13 | Copyright AmadOS ©</p>
+        <button onclick="closeWindow(gs)">OK</button>
+      </div>
+      <!-- Start Menu -->
+      <div class="window" id="menu">
+        <button onclick="closeWindow(menu)">Close</button>
+        <button onclick="shutdown()">Shut Down</button>
+        <button onclick="window.location.reload()">Log Out</button>
+      </div>
+      <!-- Settings -->
+      <div class="window" id="settings">
+        <h1>Settings</h1>
+        <p>Settings only has little options.</p>
+        <p>I want G-OS to open these windows on startup: </p>
+        <input type="checkbox" id="getStartedCheckbox">Get Started</input>
+        <br>
+        <input type="checkbox" id="settingsWin">Settings</input>
+        <br>
+        <h1>Time options</h1>
+        <br>
+        <input id="setHours"> Set Hours (24 hour format) </input>
+        <br>
+        <input id="setMinutes"> Set Minutes (24 hour format )</input>
+        <br>
+        <button onclick="checkStartupOptions()">Save Changes</button>
+        <br>
+        <button onclick="closeWindow(settingsWindow)">Close</button>
+      </div>
+      <!-- Taskbar and other windows -->
+      <div class="taskbar" id="taskbar">
+        <button onclick="startMenu()">Start</button>
+        <button onclick="settings()">Settings</button>
+        <button onclick="GOSStore()">G-OS Store</button>
+        <button onclick="openWindowsWTVDownloader()" id="WWTVD">WWTVD</button>
+      </div>
+      <!-- OS Store -->
+      <div class="window" id="osStore">
+        <h1>OS Store</h1>
+        <p>Welcome to the OS Store, here you can download apps for G-OS.</p>
+        <p>Currently, there are only 2 apps in the store. Please check backfor more when the 13th or 14th build is released.</p>
+        <br>
+        <button onclick="downloadApp('Bomber')">Download Bomber App</button>
+        <p>Not verified</p>
+        <br>
+        <button onclick="downloadApp('WindowsWTV')">Download Windows WTV Downloader</button>
+        <p>Verified</p>
+        <br>
+        <button onclick="closeWindow(osStore)">Close</button>
+      </div>
+      <!-- Taskbar Options -->
+      <div class="tskOptions" id="taskbarOptions">
+        <button onclick="closeWindow(tsko)">Close</button>
+        <button onclick="taskManager()">Task Manager</button>
+      </div>
+      <div class="window" id="taskManagerWindow">
+        <h1>Task Manager</h1>
+        <p>Recently Opened Applications:</p>
+      </div>
+      <!-- Windows WTV Downloader Window -->
+       <div class="window" id="windowsWTVWindow">
+        <h1>Windows WTV Downloader</h1>
+        <p>This app allows you to download Windows WTV, an another OS made by AmadOS (MadCode25)</p>
+        <button onclick="downloadWindowsWTV()">Download Windows WTV</button>
+        <button onclick="closeWindow(windowsWTVWindow)">Close</button>
+      </div>
+      <script src="script.js"></script>
+  </body>
+</html>

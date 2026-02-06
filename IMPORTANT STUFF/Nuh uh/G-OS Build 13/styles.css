@@ -1,0 +1,105 @@
+/* Main Elements */
+body {
+  text-align: center;
+  font-family: 'Audiowide', Sans-Serif;
+  background-color: black;
+  color: #39FF14;
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+.title {
+  color: #00C853;
+}
+
+/* End of main elements. */
+/* Elements for most of the UI.*/
+
+#currentTime {
+  left: 40%;
+  top: 0px;
+  position: absolute;
+}
+
+input {
+  outline: none;
+  background-color: #39AA00;
+  border-color: #39FF14;
+}
+
+button {
+  background-color: #39FF14;
+  border-radius: 10px;
+  padding: 6px;
+  width: 90px;
+  border-color: #39AA00;
+  color: black;
+  position: relative;
+}
+
+button:active {
+  background-color: #39AA00;
+}
+
+.window {
+  display: none;
+  background-color: #39AA00;
+  width: 550px;
+  height: 300px;
+  position: fixed;
+  overflow: auto;
+}
+.taskbar {
+  background-color: #39AA00;
+  top: 94%;
+  width: 100%;
+  height: 32px;
+  position: absolute;
+  text-align: left;
+  display: none;
+}
+
+.shutdown-screen {
+  background-color: black;
+  color: white;
+  height: 100vh;
+  width: 100vw;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+}
+
+.tskOptions {
+  display: none;
+  background-color: #39AA00;
+  width: 300px;
+  height: 200px;
+  position: fixed;
+  overflow: auto;
+  z-index: 1000;
+  display: none'
+}
+
+/* End of most of the UI elements. */
+
+
+
+/*
+Color Pallete (for backup):
+
+#39FF14 – Neon Green
+
+#39AA00 - Dark Neon Green - Just for not too alien looking OS.
+
+#00FF9D – Aqua Neon
+
+#00C853 – Vivid Green
+
+#003B2B – Deep Tech Dark Green
+
+#D9F99D – Soft Neon Background
+*/
