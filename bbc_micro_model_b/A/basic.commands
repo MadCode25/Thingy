@@ -1,7 +1,0 @@
-import basic_os as os
-
-fetch ["basic.bootsection"] as bbt
-
-PRINT = os.setCommand("PRINT", txt=os.look(self.str[:5]); print(txt))
-CLS = os.setCommand("CLS", os.delete("1.0"))
-// File lines from 7 to 119 successfully hidden.
