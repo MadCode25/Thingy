@@ -5,11 +5,12 @@ let pitchObject, yawObject;
 const objects = [];      // Platforms
 const killBricks = [];   // Lava
 const touchParts = [];   // Checkpoints/Buttons
-const username = document.getElementById("username");
+const username = document.getElementById("username").value
 
 let isLocked = false;
 let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
 let canJump = false;
+let bv = document.getElementById("bobux_val").value
 
 let currentStage = 1;
 let spawnPoint = new THREE.Vector3(0, 5, 0);
@@ -223,7 +224,6 @@ function buildLevel() {
     
     const checkpoint = createBlock(0, 2, -40, 10, 1, 10, 0xFFFF00, false, true);
     checkpoint.mesh.userData.message = "Checkpoint reached!"; // Note: we use .mesh here because createBlock returns an object
-    lastCheckpoint = 0, 2, -40
     
     createBlock(0, 2, -55, 4, 1, 10, 0x333333);
     createBlock(0, 2.6, -55, 4, 0.2, 2, 0xFF0000, true, false); // Lava
@@ -238,6 +238,8 @@ function buildLevel() {
     createBlock(-6, 11, -90, 1, 3, 5, 0xFF0129, true, false).moveTo(3, 11, -90, speedway_spd);
     createBlock(0, 11, -109, 0.7,3, 3, 0xfffff, true, false). moveTo(0, 11, -80, speedway_spd);
     createBlock(0, 8, -116, 7, 1, 7, 0xffFFF);
+    createBlock(0, 8, -134, 7, 1, 7, 0xAAa12, false, true).mesh.userData.message = "You completed Stage 1: Received 20 Bobux!";
+    bv = "Bobux: 20";
 }
 
 // --- 8. MAIN LOOP ---
@@ -307,6 +309,7 @@ touchParts.forEach((part) => {
                 msg.innerHTML = `<span style="color:${color}">[System]: ${part.userData.message}</span>`;
                 chatHistory.appendChild(msg);
                 chatHistory.scrollTop = chatHistory.scrollHeight;
+                
             }
             part.userData.touched = true;
         }
