@@ -1,0 +1,5 @@
+printf("Hello, C-!")
+printf("I like pizza!")
+x = userInput("What about you? What do you like?: ")
+printf("\n")
+printf(x, "is a nice food.")
