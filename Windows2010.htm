@@ -1,0 +1,248 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <title>Windows 2010</title>
+    <style>
+        body{
+            margin:0;
+            overflow:hidden;
+            font-family:monospace;
+        }
+
+        #desktop{
+            width:100vw;
+            height:100vh;
+            background:#1e1e2f;
+            position:relative;
+        }
+
+        #taskbar{
+            position:absolute;
+            bottom:0;
+            width:100%;
+            height:40px;
+            background:black;
+        }
+
+        button {
+            padding: 12px;
+            background-color: #0b4470;
+            border-radius: 5px;
+            border: none;
+            cursor:pointer;
+        }
+
+        .window{
+            position:absolute;
+            top:100px;
+            left:100px;
+            background:white;
+            border:2px solid black;
+            z-index:1;
+        }
+
+        .titlebar{
+            background:#444;
+            color:white;
+            user-select: none;
+            padding:5px;
+        }
+
+        .content{
+            padding:10px;
+        }
+
+        .close{
+            float:right;
+            background:red;
+            color:white;
+            border:none;
+            cursor:pointer;
+            padding:2px 6px;
+            font-size:12px;
+            line-height:1;
+        }
+
+        .regedit{
+            display:flex;
+            height:100%;
+            font-size:13px;
+        }
+
+        .regtree{
+            width:200px;
+            background:#eee;
+            border-right:1px solid #aaa;
+            padding:5px;
+        }
+
+        .regvalues{
+            flex:1;
+            padding:10px;
+        }
+
+        .regkey{
+            cursor:pointer;
+            padding:2px;
+        }
+
+        .regkey:hover{
+            background:#cce5ff;
+        }
+    </style>
+</head>
+<body>
+<div id="desktop"></div>
+
+<div id="taskbar">
+    <button onclick="openApp('Terminal')">Terminal</button>
+    <button onclick="openApp('MrHi')">Mr. Hi</button>
+    <button onclick="openApp('RegEdit')">Registry Editor</button>
+    <button onclick="openApp('SpeedRun')">Run</button>
+</div>
+
+<script>
+let currentWindow = null;
+let offsetX = 0, offsetY = 0;
+let currRegKey = null;
+let tree = document.getElementById("regtree");
+
+// Registry
+let registry = {
+    HKEY_WINDOW: {
+        Terminal: { width: 300, height: 200, content: `<pre>Coming soon</pre>` },
+        MrHi: { width: 400, height: 140, content: `<h1>Mr. Hi says Hi!</h1>` },
+        SpeedRun: { width: 400, height: 200, content: `
+            <p>Enter a program's name, and Windows will open it for you.</p><br>
+            <input id="program"></input>
+            <button onclick="openApp(document.getElementById('program').value)">Run</button>
+        ` }
+    }
+};
+
+// Create a window
+function createWindow(title, content, id, w, h){
+    let win = document.createElement("div");
+    win.className = "window";
+    win.id = `win-${id}`;
+    win.style.width = w + "px";
+    win.style.height = h + "px";
+
+    win.innerHTML = `
+        <div class="titlebar">
+            ${title}
+            <button class="close">X</button>
+        </div>
+        <div class="content">${content}</div>
+    `;
+
+    document.getElementById("desktop").appendChild(win);
+
+    // Close button
+    let closeBtn = win.querySelector(".close");
+    closeBtn.addEventListener("click", ()=> win.remove());
+
+    // Dragging
+    let titlebar = win.querySelector(".titlebar");
+    titlebar.addEventListener("mousedown", (e)=>{
+        currentWindow = win;
+        offsetX = e.clientX - win.offsetLeft;
+        offsetY = e.clientY - win.offsetTop;
+    });
+}
+
+// Open apps dynamically from registry
+function openApp(appName){
+    let cfg = registry.HKEY_WINDOW[appName];
+
+    if(appName === "RegEdit"){
+        createWindow("Registry Editor", `
+        <div class="regedit">
+            <div class="regtree" id="regtree"></div>
+            <div class="regvalues" id="regvalues"></div>
+        </div>`, "regedit", 500, 300);
+        loadRegistryTree();
+    }
+    else if(cfg){
+        // App exists in registry
+        createWindow(appName, cfg.content, appName, cfg.width, cfg.height);
+    }
+    else{
+        // Warning for undefined app
+        createWindow("Warning", `<p>${appName} not found in registry.</p>`, "warn", 300, 150);
+        console.error("App undefined:", appName);
+    }
+}
+
+// Registry editor
+function loadRegistryTree(){
+    let tree = document.getElementById("regtree");
+    tree.innerHTML = "";
+
+    for(let root in registry){
+        let rootDiv = document.createElement("div");
+        rootDiv.textContent = root;
+        rootDiv.className = "regkey";
+        rootDiv.onclick = () => showSubKeys(root);
+        tree.appendChild(rootDiv);
+    }
+}
+
+function showSubKeys(root){
+    let tree = document.getElementById("regtree");
+    tree.innerHTML = ""; // clear previous
+
+    if(registry[root]){
+        for(let subKey in registry[root]){
+            let sub = document.createElement("div");
+            sub.textContent = " - -" + subKey;
+            sub.className = "regkey";
+            sub.onclick = () => showValues(root, subKey);
+            tree.appendChild(sub);
+        }
+    } else {
+        createWindow("Warning", `Key ${root} does not exist`, "warn", 300, 140);
+    }
+}
+
+function showValues(root, key){
+    let values = document.getElementById("regvalues");
+    let data = registry[root][key];
+    currRegKey = {root, key};
+
+    values.innerHTML = `
+        <h3>${key}</h3>
+        Width: <input id="reg-width" value="${data.width}"><br><br>
+        Height: <input id="reg-height" value="${data.height}"><br><br>
+        <button onclick="saveRegVal()">Save</button>
+    `;
+}
+
+function saveRegVal(){
+    if(!currRegKey) return;
+
+    let {root, key} = currRegKey;
+    let cfg = registry[root][key];
+
+    cfg.width = parseInt(document.getElementById("reg-width").value);
+    cfg.height = parseInt(document.getElementById("reg-height").value);
+
+    let win = document.getElementById("win-" + key);
+    if(win){
+        win.style.width = cfg.width + "px";
+        win.style.height = cfg.height + "px";
+    }
+}
+
+// Window dragging
+document.addEventListener("mousemove", (e)=>{
+    if(currentWindow){
+        currentWindow.style.left = (e.clientX - offsetX) + "px";
+        currentWindow.style.top = (e.clientY - offsetY) + "px";
+    }
+});
+document.addEventListener("mouseup", ()=>{ currentWindow = null; });
+
+</script>
+</body>
+</html>
