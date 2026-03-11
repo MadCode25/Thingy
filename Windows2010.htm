@@ -23,6 +23,12 @@
             height:40px;
             background:black;
         }
+        
+        #explorer-path{
+            background-color: #eee;
+            border: 2px solid #aaa;
+            height: 13px;
+        }
 
         button {
             padding: 12px;
@@ -47,6 +53,7 @@
             user-select: none;
             padding:5px;
         }
+        
 
         .content{
             padding:10px;
@@ -98,6 +105,7 @@
     <button onclick="openApp('Terminal')">Terminal</button>
     <button onclick="openApp('MrHi')">Mr. Hi</button>
     <button onclick="openApp('RegEdit')">Registry Editor</button>
+    <button onclick="openApp('Explorer')">File Explorer</button>
     <button onclick="openApp('SpeedRun')">Run</button>
 </div>
 
@@ -105,28 +113,95 @@
 let currentWindow = null;
 let offsetX = 0, offsetY = 0;
 let currRegKey = null;
-let tree = document.getElementById("regtree");
 
-// Registry
+const desktop = document.getElementById("desktop");
+
+
+
+/* =========================
+   REGISTRY
+========================= */
+
 let registry = {
     HKEY_WINDOW: {
-        Terminal: { width: 300, height: 200, content: `<pre>Coming soon</pre>` },
-        MrHi: { width: 400, height: 140, content: `<h1>Mr. Hi says Hi!</h1>` },
-        SpeedRun: { width: 400, height: 200, content: `
-            <p>Enter a program's name, and Windows will open it for you.</p><br>
-            <input id="program"></input>
+        Terminal: {
+            width: 300,
+            height: 200,
+            content: `<pre>Windows 2010 Terminal
+Type commands soon...</pre>`
+        },
+
+        MrHi: {
+            width: 400,
+            height: 150,
+            content: `<h2>Mr. Hi says hi</h2>`
+        },
+
+        SpeedRun: {
+            width: 350,
+            height: 160,
+            content: `
+            <p>Enter a program name:</p>
+            <input id="program">
             <button onclick="openApp(document.getElementById('program').value)">Run</button>
-        ` }
+            `
+        }
+    },
+
+    HKEY_DESKTOP: {
+        BG: { r:30, g:30, b:47 }
     }
 };
 
-// Create a window
+
+
+/* =========================
+   FILE SYSTEM
+========================= */
+
+let filesystem = {
+    "C:": {
+
+        Programs:{
+            "terminal.exe": () => openApp("Terminal"),
+            "mrhi.exe": () => openApp("MrHi")
+        },
+
+        System:{
+            "regedit.exe": () => openApp("RegEdit")
+        },
+
+        Users:{
+            guest:{
+                "readme.txt": "Welcome to Windows 2010!\nThis is your home folder."
+                Downloads:{
+                    "update.log" () => {openApp("Notepad"); 
+                    notePad.Write()
+                        
+                    }
+                }
+            }
+        }
+
+    }
+};
+
+let currentPath = ["C:"];
+
+
+
+/* =========================
+   WINDOW SYSTEM
+========================= */
+
 function createWindow(title, content, id, w, h){
+
     let win = document.createElement("div");
     win.className = "window";
-    win.id = `win-${id}`;
-    win.style.width = w + "px";
-    win.style.height = h + "px";
+    win.id = "win-"+id;
+
+    win.style.width = w+"px";
+    win.style.height = h+"px";
 
     win.innerHTML = `
         <div class="titlebar">
@@ -136,112 +211,308 @@ function createWindow(title, content, id, w, h){
         <div class="content">${content}</div>
     `;
 
-    document.getElementById("desktop").appendChild(win);
+    desktop.appendChild(win);
 
-    // Close button
-    let closeBtn = win.querySelector(".close");
-    closeBtn.addEventListener("click", ()=> win.remove());
+    win.querySelector(".close").onclick = ()=> win.remove();
 
-    // Dragging
     let titlebar = win.querySelector(".titlebar");
-    titlebar.addEventListener("mousedown", (e)=>{
+
+    titlebar.onmousedown = (e)=>{
         currentWindow = win;
         offsetX = e.clientX - win.offsetLeft;
         offsetY = e.clientY - win.offsetTop;
-    });
+    };
 }
 
-// Open apps dynamically from registry
+
+
+/* =========================
+   OPEN APPLICATIONS
+========================= */
+
 function openApp(appName){
+
     let cfg = registry.HKEY_WINDOW[appName];
 
     if(appName === "RegEdit"){
-        createWindow("Registry Editor", `
+
+        createWindow("Registry Editor",`
         <div class="regedit">
             <div class="regtree" id="regtree"></div>
-            <div class="regvalues" id="regvalues"></div>
-        </div>`, "regedit", 500, 300);
+            <div class="regvalues" id="regvalues">Select a key.</div>
+        </div>
+        `,"regedit",500,300);
+
         loadRegistryTree();
+        return;
     }
-    else if(cfg){
-        // App exists in registry
-        createWindow(appName, cfg.content, appName, cfg.width, cfg.height);
+    
+
+    if(appName === "Explorer"){
+
+        createWindow("File Explorer",`
+            <button onclick="goBack()" class='close'>⬅ Back</button>
+            <div id="explorer-path"></div>
+            <div id="explorer-files"></div>
+        `,"explorer",500,350);
+
+        renderExplorer();
+        return;
+    }
+
+
+    if(cfg){
+        createWindow(appName,cfg.content,appName,cfg.width,cfg.height);
     }
     else{
-        // Warning for undefined app
-        createWindow("Warning", `<p>${appName} not found in registry.</p>`, "warn", 300, 150);
-        console.error("App undefined:", appName);
+        createWindow("Warning",`<p>${appName} not found.</p>`,"warn",300,150);
     }
+
 }
 
-// Registry editor
+/*
+===========================
+        NOTEPAD             
+===========================
+*/
+function notePad(){
+    createWindow("Notepad", "<textarea style='resize: none;')
+}
+
+
+
+/* =========================
+   REGISTRY EDITOR
+========================= */
+
 function loadRegistryTree(){
+
     let tree = document.getElementById("regtree");
-    tree.innerHTML = "";
+    tree.innerHTML="";
 
     for(let root in registry){
-        let rootDiv = document.createElement("div");
-        rootDiv.textContent = root;
-        rootDiv.className = "regkey";
-        rootDiv.onclick = () => showSubKeys(root);
-        tree.appendChild(rootDiv);
+
+        let div=document.createElement("div");
+        div.textContent=root;
+        div.className="regkey";
+
+        div.onclick=()=> showSubKeys(root);
+
+        tree.appendChild(div);
     }
 }
+
+
 
 function showSubKeys(root){
-    let tree = document.getElementById("regtree");
-    tree.innerHTML = ""; // clear previous
 
-    if(registry[root]){
-        for(let subKey in registry[root]){
-            let sub = document.createElement("div");
-            sub.textContent = " - -" + subKey;
-            sub.className = "regkey";
-            sub.onclick = () => showValues(root, subKey);
-            tree.appendChild(sub);
-        }
-    } else {
-        createWindow("Warning", `Key ${root} does not exist`, "warn", 300, 140);
+    let tree=document.getElementById("regtree");
+    tree.innerHTML="";
+
+    for(let key in registry[root]){
+
+        let div=document.createElement("div");
+
+        div.textContent=" - "+key;
+        div.className="regkey";
+
+        div.onclick=()=> showValues(root,key);
+
+        tree.appendChild(div);
     }
 }
 
-function showValues(root, key){
-    let values = document.getElementById("regvalues");
-    let data = registry[root][key];
-    currRegKey = {root, key};
 
-    values.innerHTML = `
+
+function showValues(root,key){
+
+    let values=document.getElementById("regvalues");
+    let data=registry[root][key];
+
+    currRegKey={root,key};
+
+
+    if(root==="HKEY_WINDOW"){
+
+        values.innerHTML=`
         <h3>${key}</h3>
-        Width: <input id="reg-width" value="${data.width}"><br><br>
-        Height: <input id="reg-height" value="${data.height}"><br><br>
+
+        Width:
+        <input id="reg-width" value="${data.width}"><br><br>
+
+        Height:
+        <input id="reg-height" value="${data.height}"><br><br>
+
         <button onclick="saveRegVal()">Save</button>
-    `;
+        `;
+    }
+
+
+    if(root==="HKEY_DESKTOP"){
+
+        values.innerHTML=`
+        <h3>Desktop Color</h3>
+
+        R: <input id="reg-r" value="${data.r}"><br>
+        G: <input id="reg-g" value="${data.g}"><br>
+        B: <input id="reg-b" value="${data.b}"><br><br>
+
+        <button onclick="saveRegVal()">Apply</button>
+        `;
+    }
+
 }
+
+
 
 function saveRegVal(){
+
     if(!currRegKey) return;
 
-    let {root, key} = currRegKey;
-    let cfg = registry[root][key];
+    let {root,key}=currRegKey;
+    let cfg=registry[root][key];
 
-    cfg.width = parseInt(document.getElementById("reg-width").value);
-    cfg.height = parseInt(document.getElementById("reg-height").value);
+    if(root==="HKEY_WINDOW"){
 
-    let win = document.getElementById("win-" + key);
-    if(win){
-        win.style.width = cfg.width + "px";
-        win.style.height = cfg.height + "px";
+        cfg.width=parseInt(document.getElementById("reg-width").value);
+        cfg.height=parseInt(document.getElementById("reg-height").value);
+
+        let win=document.getElementById("win-"+key);
+
+        if(win){
+            win.style.width=cfg.width+"px";
+            win.style.height=cfg.height+"px";
+        }
     }
+
+
+    if(root==="HKEY_DESKTOP"){
+
+        cfg.r=parseInt(document.getElementById("reg-r").value);
+        cfg.g=parseInt(document.getElementById("reg-g").value);
+        cfg.b=parseInt(document.getElementById("reg-b").value);
+
+        desktop.style.backgroundColor=`rgb(${cfg.r},${cfg.g},${cfg.b})`;
+    }
+
 }
 
-// Window dragging
-document.addEventListener("mousemove", (e)=>{
-    if(currentWindow){
-        currentWindow.style.left = (e.clientX - offsetX) + "px";
-        currentWindow.style.top = (e.clientY - offsetY) + "px";
+
+
+/* =========================
+   FILE EXPLORER
+========================= */
+
+function getFolder(path){
+
+    let folder=filesystem;
+
+    for(let p of path){
+        folder=folder[p];
     }
+
+    return folder;
+}
+
+
+
+function renderExplorer(){
+
+    let pathDiv=document.getElementById("explorer-path");
+    let fileDiv=document.getElementById("explorer-files");
+
+    if(!fileDiv) return;
+
+    let folder=getFolder(currentPath);
+
+    pathDiv.textContent=currentPath.join("/");
+
+    fileDiv.innerHTML="";
+
+    for(let name in folder){
+
+        let item=document.createElement("div");
+
+        item.textContent=name;
+        item.style.cursor="pointer";
+
+        item.onclick=()=> openFile(name);
+
+        fileDiv.appendChild(item);
+    }
+
+}
+
+
+
+function openFile(name){
+
+    let folder=getFolder(currentPath);
+    let file=folder[name];
+
+
+    if(typeof file==="object"){
+
+        currentPath.push(name);
+        renderExplorer();
+    }
+
+    else if(typeof file==="function"){
+
+        file();
+    }
+
+    else{
+
+        createWindow(name,`<pre>${file}</pre>`,"txt",300,200);
+    }
+
+}
+
+
+
+function goBack(){
+
+    if(currentPath.length>1){
+        currentPath.pop();
+        renderExplorer();
+    }
+
+}
+
+
+
+/* =========================
+   WINDOW DRAGGING
+========================= */
+
+document.addEventListener("mousemove",(e)=>{
+
+    if(currentWindow){
+
+        currentWindow.style.left=(e.clientX-offsetX)+"px";
+        currentWindow.style.top=(e.clientY-offsetY)+"px";
+    }
+
 });
-document.addEventListener("mouseup", ()=>{ currentWindow = null; });
+
+document.addEventListener("mouseup",()=>{
+    currentWindow=null;
+});
+
+
+
+/* =========================
+   BOOT SETTINGS
+========================= */
+
+(function(){
+
+    let bg=registry.HKEY_DESKTOP.BG;
+
+    desktop.style.backgroundColor=`rgb(${bg.r},${bg.g},${bg.b})`;
+
+})();
 
 </script>
 </body>
