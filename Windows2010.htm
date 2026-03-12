@@ -30,6 +30,14 @@
             height: 13px;
         }
 
+        #explorer-files{
+            background-color: #eee;
+            border: 1px solid #aaa;
+            max-height: 300px;
+            height: 250px;
+
+        }
+
         button {
             padding: 12px;
             background-color: #0b4470;
@@ -141,7 +149,7 @@ Type commands soon...</pre>`
             width: 350,
             height: 160,
             content: `
-            <p>Enter a program name:</p>
+            <p>Type the name of a program, and Windows\nwill open it for you.</p>
             <input id="program">
             <button onclick="openApp(document.getElementById('program').value)">Run</button>
             `
@@ -173,17 +181,15 @@ let filesystem = {
 
         Users:{
             guest:{
-                "readme.txt": "Welcome to Windows 2010!\nThis is your home folder."
+                "readme.txt": "Welcome to Windows 2010!\nThis is your home folder.",
                 Downloads:{
-                    "update.log" () => {openApp("Notepad"); 
-                    notePad.Write()
+                    "update.log": `March 10 2026 - Windows 10 is here!\nMarch 11 2026 - Added Explorer\nMarch 12 2026 - Added more keys to\nregedit`
                         
                     }
                 }
             }
         }
 
-    }
 };
 
 let currentPath = ["C:"];
@@ -270,14 +276,6 @@ function openApp(appName){
 
 }
 
-/*
-===========================
-        NOTEPAD             
-===========================
-*/
-function notePad(){
-    createWindow("Notepad", "<textarea style='resize: none;')
-}
 
 
 
