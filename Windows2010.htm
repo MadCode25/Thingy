@@ -114,6 +114,7 @@
     <button onclick="openApp('MrHi')">Mr. Hi</button>
     <button onclick="openApp('RegEdit')">Registry Editor</button>
     <button onclick="openApp('Explorer')">File Explorer</button>
+    <button onclick="openApp('AmadOS Apps')">AmadOS Apps</button>
     <button onclick="openApp('SpeedRun')">Run</button>
 </div>
 
@@ -129,6 +130,17 @@ const desktop = document.getElementById("desktop");
 /* =========================
    REGISTRY
 ========================= */
+
+const aasc = `
+<div style="text-align: center;">
+<h1>Welcome!</h1>
+</div>
+<div style="background-color: #eee; border: 2px solid #aaa; text-align: center; overflow: scroll; height: 340px;">
+<h1>What app do you want to get?</h1>
+Note that some of these<br>apps are developed by AmadOS itself.
+</div>
+`
+
 
 let registry = {
     HKEY_WINDOW: {
@@ -153,6 +165,12 @@ Type commands soon...</pre>`
             <input id="program">
             <button onclick="openApp(document.getElementById('program').value)">Run</button>
             `
+        },
+        
+        "AmadOS Apps": {
+            width: 650,
+            height: 500,
+            content: aasc
         }
     },
 
@@ -196,6 +214,12 @@ let filesystem = {
 };
 
 let currentPath = ["C:"];
+let packages = {
+    "C- Compiler":{
+        desc: {`Allows C- compatability, exclusively for Windows 2010.<br>How to use?:<br>If your version of Windows 2010\nis more than 12.3.26, it means<br>Terminal is available.<br><br>First, download this app, then, go to "C:/Programs/Consoles/Compilers" then look for a folder<br>labeled "cms_c12".<br><br>If it's there, go to your terminal, CD to your C- project,<br>then type "win_cmjs project.cms". That's it, the<br>terminal will then print the output.`}
+        version: {"12.3.26"}
+    }
+}
 
 
 
@@ -434,7 +458,7 @@ function renderExplorer(){
 
         let item=document.createElement("div");
 
-        item.textContent=name;
+        item.textContent = name;
         item.style.cursor="pointer";
 
         item.onclick=()=> openFile(name);
