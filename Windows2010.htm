@@ -176,7 +176,10 @@ let filesystem = {
         },
 
         System:{
-            "regedit.exe": () => openApp("RegEdit")
+            "regedit.exe": () => openApp("RegEdit"),
+            System32:{
+                "boot.js": `import sys as sys\nsys.desktop.bg = (sys.regedit.HKEY_BG)`
+            }
         },
 
         Users:{
