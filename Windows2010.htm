@@ -137,7 +137,8 @@ const aasc = `
 </div>
 <div style="background-color: #eee; border: 2px solid #aaa; text-align: center; overflow: scroll; height: 340px;">
 <h1>What app do you want to get?</h1>
-Note that some of these<br>apps are developed by AmadOS itself.
+Note that some of these<br>apps are developed by AmadOS itself.<br><br>
+<button onclick="openAppDetails('acm')" id='acm'>ACM</button>
 </div>
 `
 
@@ -196,7 +197,8 @@ let filesystem = {
         System:{
             "regedit.exe": () => openApp("RegEdit"),
             System32:{
-                "boot.js": `import sys as sys\nsys.desktop.bg = (sys.regedit.HKEY_BG)`
+                "boot.js": `import sys as sys\nsys.desktop.bg = (sys.regedit.HKEY_BG)`,
+                "package_mg.js": `Your access to this file is disabled.<br><br>Go to Terminal, <br>type "acm perm ENABLED <username>".`
             }
         },
 
@@ -214,12 +216,7 @@ let filesystem = {
 };
 
 let currentPath = ["C:"];
-let packages = {
-    "C- Compiler":{
-        desc: {`Allows C- compatability, exclusively for Windows 2010.<br>How to use?:<br>If your version of Windows 2010\nis more than 12.3.26, it means<br>Terminal is available.<br><br>First, download this app, then, go to "C:/Programs/Consoles/Compilers" then look for a folder<br>labeled "cms_c12".<br><br>If it's there, go to your terminal, CD to your C- project,<br>then type "win_cmjs project.cms". That's it, the<br>terminal will then print the output.`}
-        version: {"12.3.26"}
-    }
-}
+
 
 
 
@@ -303,6 +300,18 @@ function openApp(appName){
 
 }
 
+function openAppDetails(app){
+    if (app === "acm"){
+        createWindow("AAS - App Details", `ACM is a command used for Windows 2010, managing<br>other services, like permission for other users of Windows 2010.<br><br>Use this to get permission of other files. <br><br><button onclick="download('${app}')">Download</button>`, "acm", 400, 360)
+    }
+}
+
+
+function download(app){
+    if (app === "acm"){
+        createWindow("AAS - Just a moment...", "We're currently in progress for AAS...", "aas-jam", 300, 150)
+    }
+}
 
 
 
