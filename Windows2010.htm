@@ -104,6 +104,23 @@
         .regkey:hover{
             background:#cce5ff;
         }
+        
+        #terminal-output {
+            height: 100px;
+            overflow-y: scroll;
+            padding: 10px;
+            background-color: black;
+        }
+        #terminal-input-container {
+            padding: 10px;
+        }
+        #terminal-input {
+            background-color: black;
+            color: green;
+            border: none;
+            outline: none;
+            width: calc(100% - 20px);   
+        }
     </style>
 </head>
 <body>
@@ -126,6 +143,39 @@ let currRegKey = null;
 const desktop = document.getElementById("desktop");
 
 
+/* =========================
+   SYSTEM FILE RUNNER
+========================= */
+
+function runFile(path){
+
+    let folder = filesystem;
+
+    for(let p of path){
+
+        if(!folder[p]){
+            createWindow(
+                "System Error",
+                `Missing system file:<br>${path.join("/")}`,
+                "syserr",
+                300,
+                150
+            );
+            return;
+        }
+
+        folder = folder[p];
+    }
+
+    if(typeof folder === "function"){
+        folder();
+    }
+
+    else if(typeof folder === "string"){
+        createWindow(path[path.length-1], `<pre>${folder}</pre>`, "txt", 300, 200);
+    }
+}
+
 
 /* =========================
    REGISTRY
@@ -140,83 +190,231 @@ const aasc = `
 Note that some of these<br>apps are developed by AmadOS itself.<br><br>
 <button onclick="openAppDetails('acm')" id='acm'>ACM</button>
 </div>
-`
+`;
 
+const terminal = `
+<div id="terminal-output"></div>
+<div id="terminal-input-container">
+<span style="color: green;">></span>
+<input type="text" id="terminal-input" autofocus>
+</div>
+`;
 
 let registry = {
-    HKEY_WINDOW: {
-        Terminal: {
-            width: 300,
-            height: 200,
-            content: `<pre>Windows 2010 Terminal
-Type commands soon...</pre>`
-        },
 
-        MrHi: {
-            width: 400,
-            height: 150,
-            content: `<h2>Mr. Hi says hi</h2>`
-        },
+HKEY_WINDOW:{
 
-        SpeedRun: {
-            width: 350,
-            height: 160,
-            content: `
-            <p>Type the name of a program, and Windows\nwill open it for you.</p>
-            <input id="program">
-            <button onclick="openApp(document.getElementById('program').value)">Run</button>
-            `
-        },
-        
-        "AmadOS Apps": {
-            width: 650,
-            height: 500,
-            content: aasc
-        }
-    },
+Terminal:{
+width:300,
+height:200,
+content:terminal
+},
 
-    HKEY_DESKTOP: {
-        BG: { r:30, g:30, b:47 }
-    }
+MrHi:{
+width:400,
+height:150,
+content:`<h2>Mr. Hi says hi</h2>`
+},
+
+SpeedRun:{
+width:350,
+height:160,
+content:`
+<p>Type the name of a program, and Windows will open it for you.</p>
+<input id="program">
+<button onclick="openApp(document.getElementById('program').value)">Run</button>
+`
+},
+
+"AmadOS Apps":{
+width:650,
+height:500,
+content:aasc
+}
+
+},
+
+HKEY_DESKTOP:{
+BG:{r:30,g:30,b:47}
+}
+
 };
+
+
+
+let filesystem = {
+
+"C:":{
+
+/* =========================
+   SYSTEM FILES
+========================= */
+
+System:{
+
+System32:{
+
+/* core boot files */
+
+"boot.sys":()=>bootSystem(),
+
+"kernel.dll":()=>console.log("Kernel loaded"),
+
+"ui.dll":()=>console.log("UI library loaded"),
+
+"explorer.dll":()=>console.log("Explorer engine loaded"),
+
+"registry.dll":()=>console.log("Registry engine loaded"),
+
+"fs.dll":()=>console.log("Filesystem driver loaded"),
+
+
+/* system utilities */
+
+"package_mg.exe":{
+depends:[
+["C:","System","System32","ui.dll"]
+],
+run:()=>openApp("AmadOS Apps")
+},
+
+"regedit.exe":{
+depends:[
+["C:","System","System32","ui.dll"],
+["C:","System","System32","registry.dll"]
+],
+run:()=>openApp("RegEdit")
+}
+
+}
+
+},
+
+/* =========================
+   PROGRAMS
+========================= */
+
+Programs:{
+
+"explorer.exe":{
+depends:[
+["C:","System","System32","explorer.dll"],
+["C:","System","System32","ui.dll"],
+["C:","System","System32","fs.dll"]
+],
+run:()=>openApp("Explorer")
+},
+
+"terminal.exe":{
+depends:[
+["C:","System","System32","ui.dll"]
+],
+run:()=>openApp("Terminal")
+},
+
+"mrhi.exe":{
+depends:[
+["C:","System","System32","ui.dll"]
+],
+run:()=>openApp("MrHi")
+}
+
+},
+
+/* =========================
+   USERS
+========================= */
+
+Users:{
+
+guest:{
+
+"readme.txt":`Welcome to Windows 2010!
+
+This is your home folder.
+Use Explorer to navigate files.`,
+
+Downloads:{
+
+"update.log":`March 10 2026 - Windows 2010 created
+March 11 2026 - Added Explorer
+March 12 2026 - Added registry keys
+March 13 2026 - Added dependency system`
+
+}
+
+}
+
+},
+
+/* =========================
+   OPTIONAL WINDOWS STYLE
+========================= */
+
+Windows:{
+
+System32:{
+
+"notepad.exe":{
+depends:[
+["C:","System","System32","ui.dll"]
+],
+run:()=>createWindow("Notepad","<textarea style='width:100%;height:90%'></textarea>","notepad",400,300)
+}
+
+}
+
+}
+
+}
+
+};
+
+let currentPath=["C:"];
 
 
 
 /* =========================
-   FILE SYSTEM
+   PROGRAM RUNNER
 ========================= */
 
-let filesystem = {
-    "C:": {
+function runProgram(file){
 
-        Programs:{
-            "terminal.exe": () => openApp("Terminal"),
-            "mrhi.exe": () => openApp("MrHi")
-        },
+if(file.depends){
 
-        System:{
-            "regedit.exe": () => openApp("RegEdit"),
-            System32:{
-                "boot.js": `import sys as sys\nsys.desktop.bg = (sys.regedit.HKEY_BG)`,
-                "package_mg.js": `Your access to this file is disabled.<br><br>Go to Terminal, <br>type "acm perm ENABLED <username>".`
-            }
-        },
+for(let dep of file.depends){
 
-        Users:{
-            guest:{
-                "readme.txt": "Welcome to Windows 2010!\nThis is your home folder.",
-                Downloads:{
-                    "update.log": `March 10 2026 - Windows 10 is here!\nMarch 11 2026 - Added Explorer\nMarch 12 2026 - Added more keys to\nregedit`
-                        
-                    }
-                }
-            }
-        }
+let folder=filesystem;
 
-};
+for(let p of dep){
 
-let currentPath = ["C:"];
+if(!folder[p]){
 
+createWindow(
+"Program Error",
+`Missing dependency:<br>${dep.join("/")}`,
+"err",
+300,
+150
+);
+
+return;
+}
+
+folder=folder[p];
+}
+
+if(typeof folder==="function"){
+folder();
+}
+
+}
+
+}
+
+file.run();
+
+}
 
 
 
@@ -224,34 +422,35 @@ let currentPath = ["C:"];
    WINDOW SYSTEM
 ========================= */
 
-function createWindow(title, content, id, w, h){
+function createWindow(title,content,id,w,h){
 
-    let win = document.createElement("div");
-    win.className = "window";
-    win.id = "win-"+id;
+let win=document.createElement("div");
+win.className="window";
+win.id="win-"+id;
 
-    win.style.width = w+"px";
-    win.style.height = h+"px";
+win.style.width=w+"px";
+win.style.height=h+"px";
 
-    win.innerHTML = `
-        <div class="titlebar">
-            ${title}
-            <button class="close">X</button>
-        </div>
-        <div class="content">${content}</div>
-    `;
+win.innerHTML=`
+<div class="titlebar">
+${title}
+<button class="close">X</button>
+</div>
+<div class="content">${content}</div>
+`;
 
-    desktop.appendChild(win);
+desktop.appendChild(win);
 
-    win.querySelector(".close").onclick = ()=> win.remove();
+win.querySelector(".close").onclick=()=>win.remove();
 
-    let titlebar = win.querySelector(".titlebar");
+let titlebar=win.querySelector(".titlebar");
 
-    titlebar.onmousedown = (e)=>{
-        currentWindow = win;
-        offsetX = e.clientX - win.offsetLeft;
-        offsetY = e.clientY - win.offsetTop;
-    };
+titlebar.onmousedown=(e)=>{
+currentWindow=win;
+offsetX=e.clientX-win.offsetLeft;
+offsetY=e.clientY-win.offsetTop;
+};
+
 }
 
 
@@ -262,55 +461,40 @@ function createWindow(title, content, id, w, h){
 
 function openApp(appName){
 
-    let cfg = registry.HKEY_WINDOW[appName];
+let cfg=registry.HKEY_WINDOW[appName];
 
-    if(appName === "RegEdit"){
+if(appName==="RegEdit"){
 
-        createWindow("Registry Editor",`
-        <div class="regedit">
-            <div class="regtree" id="regtree"></div>
-            <div class="regvalues" id="regvalues">Select a key.</div>
-        </div>
-        `,"regedit",500,300);
+createWindow("Registry Editor",`
+<div class="regedit">
+<div class="regtree" id="regtree"></div>
+<div class="regvalues" id="regvalues">Select a key.</div>
+</div>
+`,"regedit",500,300);
 
-        loadRegistryTree();
-        return;
-    }
-    
-
-    if(appName === "Explorer"){
-
-        createWindow("File Explorer",`
-            <button onclick="goBack()" class='close'>⬅ Back</button>
-            <div id="explorer-path"></div>
-            <div id="explorer-files"></div>
-        `,"explorer",500,350);
-
-        renderExplorer();
-        return;
-    }
-
-
-    if(cfg){
-        createWindow(appName,cfg.content,appName,cfg.width,cfg.height);
-    }
-    else{
-        createWindow("Warning",`<p>${appName} not found.</p>`,"warn",300,150);
-    }
-
+loadRegistryTree();
+return;
 }
 
-function openAppDetails(app){
-    if (app === "acm"){
-        createWindow("AAS - App Details", `ACM is a command used for Windows 2010, managing<br>other services, like permission for other users of Windows 2010.<br><br>Use this to get permission of other files. <br><br><button onclick="download('${app}')">Download</button>`, "acm", 400, 360)
-    }
+if(appName==="Explorer"){
+
+createWindow("File Explorer",`
+<button onclick="goBack()" class='close'>⬅ Back</button>
+<div id="explorer-path"></div>
+<div id="explorer-files"></div>
+`,"explorer",500,350);
+
+renderExplorer();
+return;
 }
 
+if(cfg){
+createWindow(appName,cfg.content,appName,cfg.width,cfg.height);
+}
+else{
+createWindow("Warning",`<p>${appName} not found.</p>`,"warn",300,150);
+}
 
-function download(app){
-    if (app === "acm"){
-        createWindow("AAS - Just a moment...", "We're currently in progress for AAS...", "aas-jam", 300, 150)
-    }
 }
 
 
@@ -321,113 +505,111 @@ function download(app){
 
 function loadRegistryTree(){
 
-    let tree = document.getElementById("regtree");
-    tree.innerHTML="";
+let tree=document.getElementById("regtree");
+tree.innerHTML="";
 
-    for(let root in registry){
+for(let root in registry){
 
-        let div=document.createElement("div");
-        div.textContent=root;
-        div.className="regkey";
+let div=document.createElement("div");
+div.textContent=root;
+div.className="regkey";
 
-        div.onclick=()=> showSubKeys(root);
+div.onclick=()=>showSubKeys(root);
 
-        tree.appendChild(div);
-    }
+tree.appendChild(div);
 }
 
-
+}
 
 function showSubKeys(root){
 
-    let tree=document.getElementById("regtree");
-    tree.innerHTML="";
+let tree=document.getElementById("regtree");
+tree.innerHTML="";
 
-    for(let key in registry[root]){
+for(let key in registry[root]){
 
-        let div=document.createElement("div");
+let div=document.createElement("div");
 
-        div.textContent=" - "+key;
-        div.className="regkey";
+div.textContent=" - "+key;
+div.className="regkey";
 
-        div.onclick=()=> showValues(root,key);
+div.onclick=()=>showValues(root,key);
 
-        tree.appendChild(div);
-    }
+tree.appendChild(div);
+
 }
 
-
+}
 
 function showValues(root,key){
 
-    let values=document.getElementById("regvalues");
-    let data=registry[root][key];
+let values=document.getElementById("regvalues");
+let data=registry[root][key];
 
-    currRegKey={root,key};
+currRegKey={root,key};
 
+if(root==="HKEY_WINDOW"){
 
-    if(root==="HKEY_WINDOW"){
+values.innerHTML=`
+<h3>${key}</h3>
 
-        values.innerHTML=`
-        <h3>${key}</h3>
+Width:
+<input id="reg-width" value="${data.width}"><br><br>
 
-        Width:
-        <input id="reg-width" value="${data.width}"><br><br>
+Height:
+<input id="reg-height" value="${data.height}"><br><br>
 
-        Height:
-        <input id="reg-height" value="${data.height}"><br><br>
-
-        <button onclick="saveRegVal()">Save</button>
-        `;
-    }
-
-
-    if(root==="HKEY_DESKTOP"){
-
-        values.innerHTML=`
-        <h3>Desktop Color</h3>
-
-        R: <input id="reg-r" value="${data.r}"><br>
-        G: <input id="reg-g" value="${data.g}"><br>
-        B: <input id="reg-b" value="${data.b}"><br><br>
-
-        <button onclick="saveRegVal()">Apply</button>
-        `;
-    }
+<button onclick="saveRegVal()">Save</button>
+`;
 
 }
 
+if(root==="HKEY_DESKTOP"){
 
+values.innerHTML=`
+<h3>Desktop Color</h3>
+
+R: <input id="reg-r" value="${data.r}"><br>
+G: <input id="reg-g" value="${data.g}"><br>
+B: <input id="reg-b" value="${data.b}"><br><br>
+
+<button onclick="saveRegVal()">Apply</button>
+`;
+
+}
+
+}
 
 function saveRegVal(){
 
-    if(!currRegKey) return;
+if(!currRegKey)return;
 
-    let {root,key}=currRegKey;
-    let cfg=registry[root][key];
+let {root,key}=currRegKey;
+let cfg=registry[root][key];
 
-    if(root==="HKEY_WINDOW"){
+if(root==="HKEY_WINDOW"){
 
-        cfg.width=parseInt(document.getElementById("reg-width").value);
-        cfg.height=parseInt(document.getElementById("reg-height").value);
+cfg.width=parseInt(document.getElementById("reg-width").value);
+cfg.height=parseInt(document.getElementById("reg-height").value);
 
-        let win=document.getElementById("win-"+key);
+let win=document.getElementById("win-"+key);
 
-        if(win){
-            win.style.width=cfg.width+"px";
-            win.style.height=cfg.height+"px";
-        }
-    }
+if(win){
+win.style.width=cfg.width+"px";
+win.style.height=cfg.height+"px";
+}
 
+}
 
-    if(root==="HKEY_DESKTOP"){
+if(root==="HKEY_DESKTOP"){
 
-        cfg.r=parseInt(document.getElementById("reg-r").value);
-        cfg.g=parseInt(document.getElementById("reg-g").value);
-        cfg.b=parseInt(document.getElementById("reg-b").value);
+cfg.r=parseInt(document.getElementById("reg-r").value);
+cfg.g=parseInt(document.getElementById("reg-g").value);
+cfg.b=parseInt(document.getElementById("reg-b").value);
 
-        desktop.style.backgroundColor=`rgb(${cfg.r},${cfg.g},${cfg.b})`;
-    }
+desktop.style.backgroundColor=`rgb(${cfg.r},${cfg.g},${cfg.b})`;
+
+}
 
 }
 
@@ -439,16 +621,31 @@ function saveRegVal(){
 
 function getFolder(path){
 
-    let folder=filesystem;
+let folder=filesystem;
 
-    for(let p of path){
-        folder=folder[p];
-    }
-
-    return folder;
+for(let p of path){
+folder=folder[p];
 }
 
+return folder;
 
+}
+
+function deleteFile(name){
+
+    let folder = getFolder(currentPath);
+
+    if(!folder[name]){
+        createWindow("Error","File not found.","err",250,120);
+        return;
+    }
+
+    if(!confirm("Delete " + name + "?")) return;
+
+    delete folder[name];
+
+    renderExplorer();
+}
 
 function renderExplorer(){
 
@@ -467,50 +664,64 @@ function renderExplorer(){
 
         let item=document.createElement("div");
 
-        item.textContent = name;
-        item.style.cursor="pointer";
+        item.style.display="flex";
+        item.style.justifyContent="space-between";
+        item.style.marginBottom="4px";
 
-        item.onclick=()=> openFile(name);
+        let nameSpan=document.createElement("span");
+        nameSpan.textContent=name;
+        nameSpan.style.cursor="pointer";
+        nameSpan.onclick=()=>openFile(name);
 
+        let delBtn=document.createElement("button");
+        delBtn.textContent="Delete";
+        delBtn.className = "close";
+        delBtn.onclick=()=>deleteFile(name);
+
+        item.appendChild(nameSpan);
+        item.appendChild(delBtn);
         fileDiv.appendChild(item);
     }
-
 }
-
-
 
 function openFile(name){
 
-    let folder=getFolder(currentPath);
-    let file=folder[name];
+let folder=getFolder(currentPath);
+let file=folder[name];
 
+if(typeof file==="object" && !file.run){
 
-    if(typeof file==="object"){
-
-        currentPath.push(name);
-        renderExplorer();
-    }
-
-    else if(typeof file==="function"){
-
-        file();
-    }
-
-    else{
-
-        createWindow(name,`<pre>${file}</pre>`,"txt",300,200);
-    }
+currentPath.push(name);
+renderExplorer();
 
 }
 
+else if(typeof file==="object" && file.run){
 
+runProgram(file);
+
+}
+
+else if(typeof file==="function"){
+
+file();
+
+}
+
+else{
+
+createWindow(name,`<pre>${file}</pre>`,"txt",300,200);
+
+}
+
+}
 
 function goBack(){
 
-    if(currentPath.length>1){
-        currentPath.pop();
-        renderExplorer();
-    }
+if(currentPath.length>1){
+currentPath.pop();
+renderExplorer();
+}
 
 }
 
@@ -522,17 +733,33 @@ function goBack(){
 
 document.addEventListener("mousemove",(e)=>{
 
-    if(currentWindow){
+if(currentWindow){
 
-        currentWindow.style.left=(e.clientX-offsetX)+"px";
-        currentWindow.style.top=(e.clientY-offsetY)+"px";
-    }
+currentWindow.style.left=(e.clientX-offsetX)+"px";
+currentWindow.style.top=(e.clientY-offsetY)+"px";
+
+}
 
 });
 
 document.addEventListener("mouseup",()=>{
-    currentWindow=null;
+currentWindow=null;
 });
+
+
+
+/* =========================
+   BOOT SYSTEM
+========================= */
+
+function bootSystem(){
+
+console.log("Booting Windows 2010...");
+
+runFile(["C:","System","System32","ui.dll"]);
+runFile(["C:","System","System32","explorer.dll"]);
+
+}
 
 
 
@@ -542,9 +769,10 @@ document.addEventListener("mouseup",()=>{
 
 (function(){
 
-    let bg=registry.HKEY_DESKTOP.BG;
+let bg=registry.HKEY_DESKTOP.BG;
+desktop.style.backgroundColor=`rgb(${bg.r},${bg.g},${bg.b})`;
 
-    desktop.style.backgroundColor=`rgb(${bg.r},${bg.g},${bg.b})`;
+bootSystem();
 
 })();
 
