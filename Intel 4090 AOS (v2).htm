@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Intel 4090 | AOS CPUs</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+<link href="https://fonts.googleapis.com/css2?family=Cascadia+Code:ital,wght@0,200..700;1,200..700&family=Fira+Code:wght@300..700&family=Source+Code+Pro:ital,wght@0,200..900;1,200..900&display=swap" rel="stylesheet">
+
+<style>
+
+body{
+    background-color: black;
+    color: #00FF85;
+    text-align: center;
+    font-family: "Cascadia Code", monospace;
+    margin: 0;
+}
+
+.editor{
+    display: flex;
+    justify-content: center;
+    gap: 5px;
+    margin-top: 30px;
+}
+
+textarea{
+    background-color: black;
+    color: #00FF85;
+    border: 2px groove #00FF85;
+    border-radius: 5px;
+    resize: none;
+    width: 500px;
+    height: 300px;
+    padding: 10px;
+    font-family: "Cascadia Code", monospace;
+    outline: none;
+}
+
+#codeoutput{
+    border-style: groove;
+}
+button{
+    background-color: #00FF85;
+    border: 2px solid;
+    border-radius: 5px;
+    padding: 15px;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<h1>Intel 4090</h1>
+<p>The smallest CPU imaginable. Originally<br>coded from Python. No commas needed.</p>
+<a href="https://github.com/MadCode25/cpu-simulator.4090" style="text-decoration: none; color: #00FF85;">Visit the Python version</a>
+
+<div class="editor">
+<textarea id="codearea"></textarea>
+<textarea id="codeoutput" readonly>Press "RUN" to run your program.</textarea>
+</div>
+<textarea readonly style="height: 200px;" id="logs"></textarea>
+<br>
+<button onclick="run('codearea', 'codeoutput')">RUN</button>
+<br><br>
+<p>
+    How the Python version worked:<br><br>
+    The Python version used binary instead of words. Basically,<br>
+    this project is an interpreter, and has its own version/type of<br>
+    CPU assembly. It has more registers than the Python one, which basically<br>
+    makes it better, and the newer version of the old one.<br><br>
+    Registers, and functions:<br><br>
+    There are a lot of registers, which are:<br><br>
+    A<br>
+    B<br>
+    AX<br>
+    BX<br>
+    AH<br>
+    BH<br><br>
+    Functions:<br><br>
+    NOP<br>
+    HELLO (Used only for switch/case tests)<br>
+    MOV (Similar to MOV in ASM, usage: MOV [reg] [value/reg])<br>
+    ADD (Usage: ADD [reg] [reg/value])<br>
+    SVU (Usage: SVU [reg])<br>
+</p>
+<br>
+<footer style="color: grey; font-family: monospace;">AmadOS | TechJolt | 2026</footer>
+
+<script>
+    function run(code, outputarea){
+
+    let codea = document.getElementById(code).value;
+    let lines = codea.split("\n");
+
+    let log = document.getElementById("logs");
+    let output = document.getElementById(outputarea);
+
+    let oaa = "";
+    log.textContent = "";
+    let reg = {
+        A: 0,
+        B: 0,
+        AX: 0,
+        BX: 0,
+        AH: 0,
+        BH: 0
+    }
+
+    for(let i = 0; i < lines.length; i++){
+
+        let line = lines[i].trim();
+        if(line === "") continue;
+
+        let parts = line.split(" ");
+        let cmd = parts[0];
+
+        switch(cmd){
+
+    case "NOP":
+        oaa += "Did nothing\n";
+        log.textContent += "NOP\n";
+        break;
+
+    case "HELLO":
+        oaa += "Hello there\n";
+        log.textContent += "PRINT STRING 'Hello there'\n";
+        break;
+
+    case "MOV":
+    let opcodea = parts[1];
+    let operanda = parts[2];
+
+    if(!(opcodea in reg)){
+        oaa += "Invalid register: " + opcodea + "\n";
+        break;
+    }
+
+    let movVal = isNaN(operanda)
+        ? reg[operanda]
+        : Number(operanda);
+
+    log.textContent += "MOVING VALUE " + operanda + " TO " + opcodea + "\n";
+
+    reg[opcodea] = movVal;
+
+    break;
+
+    case "ADD":
+    let opcodeb = parts[1];
+    let operandb = parts[2];
+
+    if(!(opcodeb in reg)){
+        oaa += "Invalid register: " + opcodeb + "\n";
+        break;
+    }
+
+    let addVal = isNaN(operandb)
+        ? reg[operandb]
+        : Number(operandb);
+
+    log.textContent += "ADDING " + opcodeb + " TO " + operandb + "\n";
+
+    reg[opcodeb] += addVal;
+
+    break;
+
+    case "SVU":
+    let opcodec = parts[1];
+
+    if(!(opcodec in reg)){
+        oaa += "Invalid register: " + opcodec + "\n";
+        break;
+    }
+
+    log.textContent += "SHOWING VALUE OF " + opcodec + "\n";
+    oaa += reg[opcodec] + "\n";
+
+    break;
+
+    default:
+        oaa += "Unknown instruction: " + line + "\n";
+        log.textContent += "ILLEGAL INSTRUCTION\n";
+        break;
+}
+
+    }
+
+    output.value = oaa;
+
+}
+</script>
+</body>
+</html>
