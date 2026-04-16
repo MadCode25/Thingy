@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>JF (J Fancy) Demonstration</title>
+  <style>
+    body { font-family: monospace; background:#111; color:#0f0; padding:20px; }
+    textarea { width:100%; height:150px; background:#000; color:#0f0; resize: none;}
+    button { padding:10px; margin-top:10px; }
+    pre { background:#000; padding:10px; }
+  </style>
+</head>
+<body>
+
+<h2>JF Demo (J Fancy to Javascript Transpiler)</h2>
+
+<textarea id="input">
+// Write JF here
+conjure x = hallucinate(10);
+ascend x;
+manifest(x);
+</textarea>
+
+<button onclick="run()">Compile & Run</button>
+
+<h3>Generated JavaScript:</h3>
+<pre id="output"></pre>
+
+<h3>Result:</h3>
+<pre id="result"></pre>
+<br>
+<hr>
+<br>
+
+<h2>🧠 What is JF (J Fancy)?</h2>
+
+<p>
+JF (J Fancy) is a <b>transpiled programming language</b> that converts readable,
+"fancy" English-like commands into JavaScript.
+<br><br>
+Instead of writing boring code like:
+</p>
+
+<pre>let x = 5;
+console.log(x);</pre>
+
+<p>You can write:</p>
+
+<pre>conjure x = 5;
+manifest(x);</pre>
+
+<p>
+The goal is simple:
+<b>make code feel like expressive language</b> while still running as JavaScript.
+</p>
+
+---
+
+<h2>⚙️ How it works</h2>
+
+<p>
+JF doesn't run directly. It:
+</p>
+
+<ol>
+  <li>Takes your JF code</li>
+  <li>Replaces keywords using regex</li>
+  <li>Outputs valid JavaScript</li>
+  <li>Executes it using <code>eval()</code></li>
+</ol>
+
+---
+
+<h2>📜 Function Reference</h2>
+
+<table border="1" cellpadding="8" cellspacing="0" style="border-collapse:collapse; width:100%;">
+  <tr>
+    <th>JF Keyword</th>
+    <th>Meaning</th>
+    <th>JavaScript Equivalent</th>
+    <th>Example</th>
+  </tr>
+
+  <tr>
+    <td><b>conjure</b></td>
+    <td>Create variable</td>
+    <td><code>let</code></td>
+    <td><code>conjure x = 5</code></td>
+  </tr>
+
+  <tr>
+    <td><b>manifest</b></td>
+    <td>Output / print</td>
+    <td><code>console.log()</code></td>
+    <td><code>manifest(x)</code></td>
+  </tr>
+
+  <tr>
+    <td><b>ascend</b></td>
+    <td>Increment</td>
+    <td><code>x++</code></td>
+    <td><code>ascend x</code></td>
+  </tr>
+
+  <tr>
+    <td><b>descend</b></td>
+    <td>Decrement</td>
+    <td><code>x--</code></td>
+    <td><code>descend x</code></td>
+  </tr>
+
+  <tr>
+    <td><b>hallucinate(n)</b></td>
+    <td>Random number (0 → n)</td>
+    <td><code>Math.random() * n</code></td>
+    <td><code>hallucinate(10)</code></td>
+  </tr>
+
+  <tr>
+    <td><b>request()</b></td>
+    <td>User input</td>
+    <td><code>prompt()</code></td>
+    <td><code>request("Name?")</code></td>
+  </tr>
+
+  <tr>
+    <td><b>transmute(x, int)</b></td>
+    <td>Convert to number</td>
+    <td><code>parseInt(x)</code></td>
+    <td><code>transmute("5", int)</code></td>
+  </tr>
+
+  <tr>
+    <td><b>transmute(x, string)</b></td>
+    <td>Convert to string</td>
+    <td><code>String(x)</code></td>
+    <td><code>transmute(5, string)</code></td>
+  </tr>
+</table>
+
+---
+
+<h2>🧪 Example</h2>
+
+<pre>
+conjure a = transmute(request("Enter number:"), int);
+conjure b = transmute(request("Enter another:"), int);
+
+manifest(a + b);
+</pre>
+
+<p>
+This compiles into:
+</p>
+
+<pre>
+let a = parseInt(prompt("Enter number:"));
+let b = parseInt(prompt("Enter another:"));
+
+console.log(a + b);
+</pre>
+
+<script>
+function transpile(code) {
+    return code
+        // conjure → let
+        .replace(/\bconjure\b/g, "let")
+
+        // manifest → console.log
+        .replace(/\bmanifest\s*\(/g, "console.log(")
+
+        // ascend x → x++
+        .replace(/\bascend\s+(\w+)/g, "$1++")
+
+        // descend x → x--
+        .replace(/\bdescend\s+(\w+)/g, "$1--")
+
+        // hallucinate(n) → random 0-n
+        .replace(/hallucinate\((.*?)\)/g, "(Math.random()*$1)")
+        // request(str) → prompt(str)
+        .replace(/\brequest\s*\(/g, "prompt(")
+
+        // transmute(x, int)
+        .replace(/transmute\((.*?),\s*int\)/g, "parseInt($1)")
+        .replace(/transmute\((.*?),\s*string\)/g, "String($1)");
+}
+
+function run() {
+    let input = document.getElementById("input").value;
+    let js = transpile(input);
+
+    document.getElementById("output").textContent = js;
+
+    let resultBox = document.getElementById("result");
+    resultBox.textContent = ""; // clear previous output
+
+    //  hijack console.log
+    const originalLog = console.log;
+
+    console.log = function(...args) {
+        resultBox.textContent += args.join(" ") + "\n";
+    };
+
+    try {
+        eval(js);
+    } catch (e) {
+        resultBox.textContent += "[ERROR] " + e.message;
+    }
+
+    // restore console.log
+    console.log = originalLog;
+}
+</script>
+
+</body>
+</html>
