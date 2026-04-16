@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>AI Chatbot Brain</title>
+<style>
+body { font-family: Arial; text-align: center; }
+canvas { border: 1px solid black; margin-bottom: 10px; }
+#chat { margin: 10px; min-height: 100px; }
+</style>
+</head>
+<body>
+
+<h2>🧠 AI Chatbot (with visible brain)</h2>
+
+<canvas id="brain" width="500" height="300"></canvas><br>
+
+Epochs: <input type="number" id="epochs" value="2000">
+<button onclick="train()">Train</button>
+
+<div id="chat"></div>
+<input id="input" placeholder="Say something">
+<button onclick="send()">Send</button>
+
+<script>
+// -------- DATA --------
+let trainingData = [
+    ["hello", "hi"],
+    ["hi", "hello"],
+    ["how are you", "i am fine"],
+    ["who made you", "i was made by AmadOS."],
+    ["bye", "goodbye"]
+];
+
+// Build vocab
+let vocab = [...new Set(trainingData.flatMap(p => p[0].split(" ")))];
+let responses = [...new Set(trainingData.map(p => p[1]))];
+
+// -------- TEXT --------
+function clean(text) {
+    return text.toLowerCase().replace(/[^\w\s]/g, "");
+}
+
+function vectorize(text) {
+    let words = clean(text).split(" ");
+    return vocab.map(w => words.includes(w) ? 1 : 0);
+}
+
+function responseVector(resp) {
+    return responses.map(r => r === resp ? 1 : 0);
+}
+
+// -------- NETWORK --------
+let inputSize = vocab.length;
+let hiddenSize = 6;
+let outputSize = responses.length;
+
+let W1 = Array.from({length: inputSize}, () =>
+    Array.from({length: hiddenSize}, () => Math.random()*2-1)
+);
+
+let W2 = Array.from({length: hiddenSize}, () =>
+    Array.from({length: outputSize}, () => Math.random()*2-1)
+);
+
+function sigmoid(x) {
+    return 1 / (1 + Math.exp(-x));
+}
+
+function sigmoidDeriv(x) {
+    return x * (1 - x);
+}
+
+// -------- TRAIN --------
+function train() {
+    let epochs = parseInt(document.getElementById("epochs").value);
+
+    for (let e = 0; e < epochs; e++) {
+        for (let [inpText, outText] of trainingData) {
+
+            let inp = vectorize(inpText);
+            let target = responseVector(outText);
+
+            let hidden = W1[0].map((_, j) =>
+                sigmoid(inp.reduce((sum, v, i) => sum + v * W1[i][j], 0))
+            );
+
+            let output = W2[0].map((_, j) =>
+                sigmoid(hidden.reduce((sum, v, i) => sum + v * W2[i][j], 0))
+            );
+
+            let dOutput = output.map((o, i) =>
+                (target[i] - o) * sigmoidDeriv(o)
+            );
+
+            let dHidden = hidden.map((h, i) =>
+                dOutput.reduce((sum, d, j) => sum + d * W2[i][j], 0) * sigmoidDeriv(h)
+            );
+
+            for (let i = 0; i < hiddenSize; i++) {
+                for (let j = 0; j < outputSize; j++) {
+                    W2[i][j] += 0.1 * dOutput[j] * hidden[i];
+                }
+            }
+
+            for (let i = 0; i < inputSize; i++) {
+                for (let j = 0; j < hiddenSize; j++) {
+                    W1[i][j] += 0.1 * dHidden[j] * inp[i];
+                }
+            }
+        }
+    }
+
+    drawBrain();
+    alert("Training done!");
+}
+
+// -------- UTILS --------
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// -------- THINKING --------
+let thinkingLine = null;
+
+async function thinkingAnimation() {
+    let chat = document.getElementById("chat");
+
+    thinkingLine = document.createElement("div");
+    chat.appendChild(thinkingLine);
+
+    let steps = ["Thinking.", "Thinking..", "Thinking..."];
+
+    for (let s of steps) {
+        thinkingLine.innerText = "Bot: " + s;
+        await sleep(400);
+    }
+
+    chat.removeChild(thinkingLine);
+}
+
+// -------- TYPE EFFECT --------
+async function typeResponse(text) {
+    let chat = document.getElementById("chat");
+    let line = document.createElement("div");
+    chat.appendChild(line);
+
+    let display = "Bot: ";
+    for (let char of text) {
+        display += char;
+        line.innerText = display;
+        await sleep(40);
+    }
+}
+
+// -------- CHAT --------
+async function send() {
+    let text = document.getElementById("input").value;
+    let inp = vectorize(text);
+
+    addChat("You: " + text);
+
+    if (inp.reduce((a,b)=>a+b,0) === 0) {
+        await thinkingAnimation();
+        await typeResponse("I don't understand.");
+        return;
+    }
+
+    await thinkingAnimation();
+
+    let hidden = W1[0].map((_, j) =>
+        sigmoid(inp.reduce((sum, v, i) => sum + v * W1[i][j], 0))
+    );
+
+    await drawStep(hidden, null);
+
+    let output = W2[0].map((_, j) =>
+        sigmoid(hidden.reduce((sum, v, i) => sum + v * W2[i][j], 0))
+    );
+
+    await drawStep(hidden, output);
+
+    let maxIndex = output.indexOf(Math.max(...output));
+
+    await typeResponse(responses[maxIndex]);
+}
+
+// -------- UI --------
+function addChat(text) {
+    let div = document.getElementById("chat");
+    div.innerHTML += text + "<br>";
+}
+
+// -------- DRAW --------
+async function drawStep(hidden, output) {
+    drawBrain(hidden || [], output || []);
+    await sleep(500);
+}
+
+function drawBrain(hidden=[], output=[]) {
+    let canvas = document.getElementById("brain");
+    let ctx = canvas.getContext("2d");
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    let inputY = 50;
+    let hiddenY = 150;
+    let outputY = 250;
+
+    let spacing = 500 / (Math.max(inputSize, hiddenSize, outputSize) + 1);
+
+    function drawLayer(count, y, values=[]) {
+        for (let i = 0; i < count; i++) {
+            let x = spacing * (i + 1);
+            let val = values[i] || 0.5;
+
+            ctx.beginPath();
+            ctx.arc(x, y, 15, 0, 2*Math.PI);
+            ctx.fillStyle = `rgb(${val*255},0,0)`;
+            ctx.fill();
+        }
+    }
+
+    drawLayer(inputSize, inputY);
+    drawLayer(hiddenSize, hiddenY, hidden);
+    drawLayer(outputSize, outputY, output);
+
+    function connect(fromCount, toCount, y1, y2) {
+        for (let i = 0; i < fromCount; i++) {
+            for (let j = 0; j < toCount; j++) {
+                ctx.beginPath();
+                ctx.moveTo(spacing*(i+1), y1);
+                ctx.lineTo(spacing*(j+1), y2);
+                ctx.strokeStyle = "rgba(0,0,0,0.2)";
+                ctx.stroke();
+            }
+        }
+    }
+
+    connect(inputSize, hiddenSize, inputY, hiddenY);
+    connect(hiddenSize, outputSize, hiddenY, outputY);
+}
+
+// initial draw
+drawBrain();
+</script>
+
+</body>
+</html>
