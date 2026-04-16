@@ -4,14 +4,17 @@
   <title>JF (J Fancy) Demonstration</title>
   <style>
     body { font-family: monospace; background:#111; color:#0f0; padding:20px; }
-    textarea { width:100%; height:150px; background:#000; color:#0f0; resize: none;}
+    textarea { width:100%; height:150px; background:#000; color:#0f0; resize:none; }
     button { padding:10px; margin-top:10px; }
     pre { background:#000; padding:10px; }
+    table { background:#000; color:#0f0; border-collapse: collapse; width:100%; }
+    th { background:#020; }
+    td, th { padding:8px; border:1px solid #0f0; }
   </style>
 </head>
 <body>
 
-<h2>JF Demo (J Fancy to Javascript Transpiler)</h2>
+<h2>JF Demo (J Fancy → JavaScript)</h2>
 
 <textarea id="input">
 // Write JF here
@@ -27,161 +30,56 @@ manifest(x);
 
 <h3>Result:</h3>
 <pre id="result"></pre>
-<br>
+
 <hr>
-<br>
 
-<h2>🧠 What is JF (J Fancy)?</h2>
-
+<h2>🧠 What is JF?</h2>
 <p>
-JF (J Fancy) is a <b>transpiled programming language</b> that converts readable,
-"fancy" English-like commands into JavaScript.
-<br><br>
-Instead of writing boring code like:
+JF (J Fancy) is a small experimental language that converts readable,
+"fancy" English-like commands into JavaScript using regex.
 </p>
-
-<pre>let x = 5;
-console.log(x);</pre>
-
-<p>You can write:</p>
-
-<pre>conjure x = 5;
-manifest(x);</pre>
-
-<p>
-The goal is simple:
-<b>make code feel like expressive language</b> while still running as JavaScript.
-</p>
-
----
-
-<h2>⚙️ How it works</h2>
-
-<p>
-JF doesn't run directly. It:
-</p>
-
-<ol>
-  <li>Takes your JF code</li>
-  <li>Replaces keywords using regex</li>
-  <li>Outputs valid JavaScript</li>
-  <li>Executes it using <code>eval()</code></li>
-</ol>
-
----
 
 <h2>📜 Function Reference</h2>
-
-<table border="1" cellpadding="8" cellspacing="0" style="border-collapse:collapse; width:100%;">
-  <tr>
-    <th>JF Keyword</th>
-    <th>Meaning</th>
-    <th>JavaScript Equivalent</th>
-    <th>Example</th>
-  </tr>
-
-  <tr>
-    <td><b>conjure</b></td>
-    <td>Create variable</td>
-    <td><code>let</code></td>
-    <td><code>conjure x = 5</code></td>
-  </tr>
-
-  <tr>
-    <td><b>manifest</b></td>
-    <td>Output / print</td>
-    <td><code>console.log()</code></td>
-    <td><code>manifest(x)</code></td>
-  </tr>
-
-  <tr>
-    <td><b>ascend</b></td>
-    <td>Increment</td>
-    <td><code>x++</code></td>
-    <td><code>ascend x</code></td>
-  </tr>
-
-  <tr>
-    <td><b>descend</b></td>
-    <td>Decrement</td>
-    <td><code>x--</code></td>
-    <td><code>descend x</code></td>
-  </tr>
-
-  <tr>
-    <td><b>hallucinate(n)</b></td>
-    <td>Random number (0 → n)</td>
-    <td><code>Math.random() * n</code></td>
-    <td><code>hallucinate(10)</code></td>
-  </tr>
-
-  <tr>
-    <td><b>request()</b></td>
-    <td>User input</td>
-    <td><code>prompt()</code></td>
-    <td><code>request("Name?")</code></td>
-  </tr>
-
-  <tr>
-    <td><b>transmute(x, int)</b></td>
-    <td>Convert to number</td>
-    <td><code>parseInt(x)</code></td>
-    <td><code>transmute("5", int)</code></td>
-  </tr>
-
-  <tr>
-    <td><b>transmute(x, string)</b></td>
-    <td>Convert to string</td>
-    <td><code>String(x)</code></td>
-    <td><code>transmute(5, string)</code></td>
-  </tr>
+<table>
+<tr><th>JF</th><th>Meaning</th><th>JS</th></tr>
+<tr><td>conjure</td><td>declare variable</td><td>let</td></tr>
+<tr><td>manifest()</td><td>print</td><td>console.log()</td></tr>
+<tr><td>ascend x</td><td>increment</td><td>x++</td></tr>
+<tr><td>descend x</td><td>decrement</td><td>x--</td></tr>
+<tr><td>hallucinate(n)</td><td>random</td><td>Math.random()*n</td></tr>
+<tr><td>request()</td><td>input</td><td>prompt()</td></tr>
+<tr><td>transmute(x,int)</td><td>to number</td><td>Number(x)</td></tr>
 </table>
-
----
-
-<h2>🧪 Example</h2>
-
-<pre>
-conjure a = transmute(request("Enter number:"), int);
-conjure b = transmute(request("Enter another:"), int);
-
-manifest(a + b);
-</pre>
-
-<p>
-This compiles into:
-</p>
-
-<pre>
-let a = parseInt(prompt("Enter number:"));
-let b = parseInt(prompt("Enter another:"));
-
-console.log(a + b);
-</pre>
 
 <script>
 function transpile(code) {
     return code
-        // conjure → let
+
+        // variables
         .replace(/\bconjure\b/g, "let")
 
-        // manifest → console.log
+        // output
         .replace(/\bmanifest\s*\(/g, "console.log(")
 
-        // ascend x → x++
+        // math ops
         .replace(/\bascend\s+(\w+)/g, "$1++")
-
-        // descend x → x--
         .replace(/\bdescend\s+(\w+)/g, "$1--")
 
-        // hallucinate(n) → random 0-n
+        // random
         .replace(/hallucinate\((.*?)\)/g, "(Math.random()*$1)")
-        // request(str) → prompt(str)
+
+        // input
         .replace(/\brequest\s*\(/g, "prompt(")
 
-        // transmute(x, int)
-        .replace(/transmute\((.*?),\s*int\)/g, "parseInt($1)")
-        .replace(/transmute\((.*?),\s*string\)/g, "String($1)");
+        // type conversion
+        .replace(/transmute\(([^,]+),\s*int\)/g, "Number($1)")
+        .replace(/transmute\(([^,]+),\s*string\)/g, "String($1)")
+
+        // 🔥 SAFE oscillate (bounded loop)
+        .replace(
+/oscillate\s*\(\s*(\w+)\s+between\s+(\d+)\s+and\s+(\d+)\s*\)\s*\{([\s\S]*?)\}/g,
+"for (let $1=$2, d=1, __c=0; __c<50; $1+=d, __c++){if($1>=$3)d=-1;if($1<=$2)d=1;$4}"
+        );
 }
 
 function run() {
@@ -191,11 +89,10 @@ function run() {
     document.getElementById("output").textContent = js;
 
     let resultBox = document.getElementById("result");
-    resultBox.textContent = ""; // clear previous output
+    resultBox.textContent = "";
 
-    //  hijack console.log
+    // redirect console.log → <pre>
     const originalLog = console.log;
-
     console.log = function(...args) {
         resultBox.textContent += args.join(" ") + "\n";
     };
@@ -206,7 +103,6 @@ function run() {
         resultBox.textContent += "[ERROR] " + e.message;
     }
 
-    // restore console.log
     console.log = originalLog;
 }
 </script>
