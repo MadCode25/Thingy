@@ -13,9 +13,11 @@ canvas { border: 1px solid black; margin-bottom: 10px; }
 
 <h2>🧠 AI Chatbot (with visible brain)</h2>
 
-<canvas id="brain" width="500" height="300"></canvas><br>
-
-Epochs: <input type="number" id="epochs" value="2000">
+<canvas id="brain" width="700" height="300"></canvas><br>
+Train first, before chatting or unexpected
+<br>responses will happen. (Recommended epochs: 4000)
+<br>
+Epochs: <input type="number" id="epochs" value="4000">
 <button onclick="train()">Train</button>
 
 <div id="chat"></div>
@@ -23,13 +25,16 @@ Epochs: <input type="number" id="epochs" value="2000">
 <button onclick="send()">Send</button>
 
 <script>
-// -------- DATA --------
+// -------- DATA --------A
 let trainingData = [
     ["hello", "hi"],
     ["hi", "hello"],
     ["how are you", "i am fine"],
     ["who made you", "i was made by AmadOS."],
-    ["bye", "goodbye"]
+    ["what are you", "i am an ai chatbot."],
+    ["who is gay", "maybe your dad."],
+    ["tell me jokes", "i cannot tell jokes since i do not have a list for that."],
+    ["bye", "goodbye."]
 ];
 
 // Build vocab
@@ -52,7 +57,8 @@ function responseVector(resp) {
 
 // -------- NETWORK --------
 let inputSize = vocab.length;
-let hiddenSize = 6;
+let hiddenSize = 8;
+let hiddenSize2 = 8
 let outputSize = responses.length;
 
 let W1 = Array.from({length: inputSize}, () =>
@@ -60,6 +66,10 @@ let W1 = Array.from({length: inputSize}, () =>
 );
 
 let W2 = Array.from({length: hiddenSize}, () =>
+    Array.from({length: hiddenSize2}, () => Math.random()*2-1)
+);
+
+let W3 = Array.from({length: hiddenSize2}, () =>
     Array.from({length: outputSize}, () => Math.random()*2-1)
 );
 
@@ -72,8 +82,9 @@ function sigmoidDeriv(x) {
 }
 
 // -------- TRAIN --------
-function train() {
+async function train() {
     let epochs = parseInt(document.getElementById("epochs").value);
+    typeResponse("I'm ready, type something.")
 
     for (let e = 0; e < epochs; e++) {
         for (let [inpText, outText] of trainingData) {
@@ -81,38 +92,56 @@ function train() {
             let inp = vectorize(inpText);
             let target = responseVector(outText);
 
-            let hidden = W1[0].map((_, j) =>
+            // ---- FORWARD ----
+            let hidden1 = W1[0].map((_, j) =>
                 sigmoid(inp.reduce((sum, v, i) => sum + v * W1[i][j], 0))
             );
 
-            let output = W2[0].map((_, j) =>
-                sigmoid(hidden.reduce((sum, v, i) => sum + v * W2[i][j], 0))
+            let hidden2 = W2[0].map((_, j) =>
+                sigmoid(hidden1.reduce((sum, v, i) => sum + v * W2[i][j], 0))
             );
 
+            let output = W3[0].map((_, j) =>
+                sigmoid(hidden2.reduce((sum, v, i) => sum + v * W3[i][j], 0))
+            );
+
+            // ---- BACKWARD ----
             let dOutput = output.map((o, i) =>
                 (target[i] - o) * sigmoidDeriv(o)
             );
 
-            let dHidden = hidden.map((h, i) =>
-                dOutput.reduce((sum, d, j) => sum + d * W2[i][j], 0) * sigmoidDeriv(h)
+            let dHidden2 = hidden2.map((h, i) =>
+                dOutput.reduce((sum, d, j) => sum + d * W3[i][j], 0) * sigmoidDeriv(h)
             );
 
-            for (let i = 0; i < hiddenSize; i++) {
+            let dHidden1 = hidden1.map((h, i) =>
+                dHidden2.reduce((sum, d, j) => sum + d * W2[i][j], 0) * sigmoidDeriv(h)
+            );
+
+            // ---- UPDATE W3 ----
+            for (let i = 0; i < hiddenSize2; i++) {
                 for (let j = 0; j < outputSize; j++) {
-                    W2[i][j] += 0.1 * dOutput[j] * hidden[i];
+                    W3[i][j] += 0.1 * dOutput[j] * hidden2[i];
                 }
             }
 
+            // ---- UPDATE W2 ----
+            for (let i = 0; i < hiddenSize; i++) {
+                for (let j = 0; j < hiddenSize2; j++) {
+                    W2[i][j] += 0.1 * dHidden2[j] * hidden1[i];
+                }
+            }
+
+            // ---- UPDATE W1 ----
             for (let i = 0; i < inputSize; i++) {
                 for (let j = 0; j < hiddenSize; j++) {
-                    W1[i][j] += 0.1 * dHidden[j] * inp[i];
+                    W1[i][j] += 0.1 * dHidden1[j] * inp[i];
                 }
             }
         }
     }
 
     drawBrain();
-    alert("Training done!");
 }
 
 // -------- UTILS --------
@@ -168,17 +197,19 @@ async function send() {
 
     await thinkingAnimation();
 
-    let hidden = W1[0].map((_, j) =>
-        sigmoid(inp.reduce((sum, v, i) => sum + v * W1[i][j], 0))
-    );
+let hidden1 = W1[0].map((_, j) =>
+    sigmoid(inp.reduce((sum, v, i) => sum + v * W1[i][j], 0))
+);
 
-    await drawStep(hidden, null);
+let hidden2 = W2[0].map((_, j) =>
+    sigmoid(hidden1.reduce((sum, v, i) => sum + v * W2[i][j], 0))
+);
 
-    let output = W2[0].map((_, j) =>
-        sigmoid(hidden.reduce((sum, v, i) => sum + v * W2[i][j], 0))
-    );
+let output = W3[0].map((_, j) =>
+    sigmoid(hidden2.reduce((sum, v, i) => sum + v * W3[i][j], 0))
+);
 
-    await drawStep(hidden, output);
+    await drawStep(hidden1, hidden2, output);
 
     let maxIndex = output.indexOf(Math.max(...output));
 
@@ -192,22 +223,23 @@ function addChat(text) {
 }
 
 // -------- DRAW --------
-async function drawStep(hidden, output) {
-    drawBrain(hidden || [], output || []);
+async function drawStep(hidden1, hidden2, output) {
+    drawBrain(hidden1 || [], hidden2 || [], output || []);
     await sleep(500);
 }
 
-function drawBrain(hidden=[], output=[]) {
+function drawBrain(hidden1=[], hidden2=[], output=[]) {
     let canvas = document.getElementById("brain");
     let ctx = canvas.getContext("2d");
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    let inputY = 50;
-    let hiddenY = 150;
-    let outputY = 250;
+    let inputY = 40;
+    let hidden1Y = 120;
+    let hidden2Y = 200;
+    let outputY = 280;
 
-    let spacing = 500 / (Math.max(inputSize, hiddenSize, outputSize) + 1);
+    let spacing = 700 / (Math.max(inputSize, hiddenSize, hiddenSize2, outputSize) + 1);
 
     function drawLayer(count, y, values=[]) {
         for (let i = 0; i < count; i++) {
@@ -222,7 +254,8 @@ function drawBrain(hidden=[], output=[]) {
     }
 
     drawLayer(inputSize, inputY);
-    drawLayer(hiddenSize, hiddenY, hidden);
+    drawLayer(hiddenSize, hidden1Y, hidden1);
+    drawLayer(hiddenSize2, hidden2Y, hidden2);
     drawLayer(outputSize, outputY, output);
 
     function connect(fromCount, toCount, y1, y2) {
@@ -237,8 +270,9 @@ function drawBrain(hidden=[], output=[]) {
         }
     }
 
-    connect(inputSize, hiddenSize, inputY, hiddenY);
-    connect(hiddenSize, outputSize, hiddenY, outputY);
+    connect(inputSize, hiddenSize, inputY, hidden1Y);
+    connect(hiddenSize, hiddenSize2, hidden1Y, hidden2Y);
+    connect(hiddenSize2, outputSize, hidden2Y, outputY);
 }
 
 // initial draw
