@@ -13,7 +13,7 @@ canvas { border: 1px solid black; margin-bottom: 10px; }
 
 <h2>🧠 AI Chatbot (with visible brain)</h2>
 
-<canvas id="brain" width="700" height="300"></canvas><br>
+<canvas id="brain" width="1000" height="400"></canvas><br>
 Train first, before chatting or unexpected
 <br>responses will happen. (Recommended epochs: 4000)
 <br>
@@ -25,17 +25,34 @@ Epochs: <input type="number" id="epochs" value="4000">
 <button onclick="send()">Send</button>
 
 <script>
-// -------- DATA --------A
+// -------- DATA --------
 let trainingData = [
     ["hello", "hi"],
     ["hi", "hello"],
     ["how are you", "i am fine"],
     ["who made you", "i was made by AmadOS."],
-    ["what are you", "i am an ai chatbot."],
+    ["what are you", "i am an ancestor of all ai chatbots today."],
+    ["what are you doing", "nothing, just scanning your input, think, and responding."],
+    ["how do i get code of you", "i'm guessing CJM4 would say no."],
+    ["source code", "nope."],
+    ["what's your purpose", "i don't... exactly know. Maybe an experiment."],
+    ["do you know ", "well i do not but maybe my owner does. (CJM4)"],
+    ["make me a ", "i don't know how to make that yet."],
     ["who is gay", "maybe your dad."],
     ["tell me jokes", "i cannot tell jokes since i do not have a list for that."],
     ["bye", "goodbye."]
 ];
+
+let neuronPositions = {
+    input: [],
+    h1: [],
+    h2: [],
+    out: []
+};
+
+let lastHidden1 = [];
+let lastHidden2 = [];
+let lastOutput = [];
 
 // Build vocab
 let vocab = [...new Set(trainingData.flatMap(p => p[0].split(" ")))];
@@ -57,7 +74,7 @@ function responseVector(resp) {
 
 // -------- NETWORK --------
 let inputSize = vocab.length;
-let hiddenSize = 8;
+let hiddenSize = 14;
 let hiddenSize2 = 8
 let outputSize = responses.length;
 
@@ -104,6 +121,11 @@ async function train() {
             let output = W3[0].map((_, j) =>
                 sigmoid(hidden2.reduce((sum, v, i) => sum + v * W3[i][j], 0))
             );
+            
+            
+            lastHidden1 = hidden1;
+            lastHidden2 = hidden2;
+            lastOutput = output;
 
             // ---- BACKWARD ----
             let dOutput = output.map((o, i) =>
@@ -168,6 +190,35 @@ async function thinkingAnimation() {
     chat.removeChild(thinkingLine);
 }
 
+// flow
+
+async function animateFlow(from, to){
+    let canvas = document.getElementById("brain");
+    let ctx = canvas.getContext("2d");
+    let steps = 20;
+
+    for (let s = 0; s <= steps; s++) {
+        drawBrain(lastHidden1, lastHidden2, lastOutput);
+
+        let t = s / steps;
+
+        for (let a of neuronPositions[from]) {
+            for (let b of neuronPositions[to]) {
+
+                let x = a.x + (b.x - a.x) * t;
+                let y = a.y + (b.y - a.y) * t;
+
+                ctx.beginPath();
+                ctx.arc(x, y, 4, 0, 2*Math.PI);
+                ctx.fillStyle = "blue";
+                ctx.fill();
+            }
+        }
+
+        await sleep(20);
+    }
+}
+
 // -------- TYPE EFFECT --------
 async function typeResponse(text) {
     let chat = document.getElementById("chat");
@@ -210,6 +261,10 @@ let output = W3[0].map((_, j) =>
 );
 
     await drawStep(hidden1, hidden2, output);
+    
+    await animateFlow("input", "h1");
+    await animateFlow("h1", "h2");
+    await animateFlow("h2", "out");
 
     let maxIndex = output.indexOf(Math.max(...output));
 
@@ -228,6 +283,8 @@ async function drawStep(hidden1, hidden2, output) {
     await sleep(500);
 }
 
+
+
 function drawBrain(hidden1=[], hidden2=[], output=[]) {
     let canvas = document.getElementById("brain");
     let ctx = canvas.getContext("2d");
@@ -235,40 +292,67 @@ function drawBrain(hidden1=[], hidden2=[], output=[]) {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     let inputY = 40;
-    let hidden1Y = 120;
-    let hidden2Y = 200;
-    let outputY = 280;
+    let hidden1Y = 150;
+    let hidden2Y = 250;
+    let outputY = 350;
 
-    let spacing = 700 / (Math.max(inputSize, hiddenSize, hiddenSize2, outputSize) + 1);
+    let spacing = 1000 / (Math.max(inputSize, hiddenSize, hiddenSize2, outputSize) + 1);
 
-    function drawLayer(count, y, values=[]) {
-        for (let i = 0; i < count; i++) {
-            let x = spacing * (i + 1);
-            let val = values[i] || 0.5;
+    function drawLayer(count, y, values = [], storeKey) {
+    let layerWidth = spacing * (count - 1);
+    let startX = (canvas.width - layerWidth) / 2;
 
-            ctx.beginPath();
-            ctx.arc(x, y, 15, 0, 2*Math.PI);
-            ctx.fillStyle = `rgb(${val*255},0,0)`;
-            ctx.fill();
-        }
+    neuronPositions[storeKey] = [];
+
+    for (let i = 0; i < count; i++) {
+        let x = startX + i * spacing;
+        let val = (values[i] !== undefined) ? values[i] : 0.5;
+
+        neuronPositions[storeKey].push({x, y});
+
+        ctx.beginPath();
+        ctx.arc(x, y, 15, 0, 2 * Math.PI);
+        ctx.fillStyle = `rgb(${val * 255},0,0)`;
+        ctx.fill();
     }
+}
 
-    drawLayer(inputSize, inputY);
-    drawLayer(hiddenSize, hidden1Y, hidden1);
-    drawLayer(hiddenSize2, hidden2Y, hidden2);
-    drawLayer(outputSize, outputY, output);
+    drawLayer(inputSize, inputY, [], "input");
+    drawLayer(hiddenSize, hidden1Y, hidden1, "h1");
+    drawLayer(hiddenSize2, hidden2Y, hidden2, "h2");
+    drawLayer(outputSize, outputY, output, "out");
 
     function connect(fromCount, toCount, y1, y2) {
-        for (let i = 0; i < fromCount; i++) {
-            for (let j = 0; j < toCount; j++) {
-                ctx.beginPath();
-                ctx.moveTo(spacing*(i+1), y1);
-                ctx.lineTo(spacing*(j+1), y2);
-                ctx.strokeStyle = "rgba(0,0,0,0.2)";
-                ctx.stroke();
-            }
+    let fromWidth = spacing * (fromCount - 1);
+    let toWidth = spacing * (toCount - 1);
+
+    let fromStart = (canvas.width - fromWidth) / 2;
+    let toStart = (canvas.width - toWidth) / 2;
+
+    for (let i = 0; i < fromCount; i++) {
+        for (let j = 0; j < toCount; j++) {
+            ctx.beginPath();
+            ctx.moveTo(fromStart + i * spacing, y1);
+            ctx.lineTo(toStart + j * spacing, y2);
+            ctx.strokeStyle = "rgba(0,0,0,0.2)";
+            ctx.stroke();
         }
     }
+}
+
+    ctx.fillStyle = "black";
+    ctx.font = "14px Arial";
+    ctx.textAlign = "center";
+
+    // Input label
+    ctx.fillText("Input", canvas.width / 2, inputY - 25);
+
+    // Hidden layers
+    ctx.fillText("Hidden 1", canvas.width / 2, hidden1Y - 25);
+    ctx.fillText("Hidden 2", canvas.width / 2, hidden2Y - 25);
+
+    // Output
+    ctx.fillText("Output", canvas.width / 2, outputY - 25);
 
     connect(inputSize, hiddenSize, inputY, hidden1Y);
     connect(hiddenSize, hiddenSize2, hidden1Y, hidden2Y);
