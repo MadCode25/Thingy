@@ -16,13 +16,33 @@ canvas { border: 1px solid black; margin-bottom: 10px; }
 <canvas id="brain" width="800" height="400"></canvas><br>
 Train first, before chatting or unexpected
 <br>responses will happen. (Recommended epochs: 4000)
-<br>
+<br><br>
+
 Epochs: <input type="number" id="epochs" value="4000">
 <button onclick="train()">Train</button>
+<br><br>
+<p>Set number of neurons of Hidden 1 and 2</p>
+<input id="h1v" placeholder="Hidden 1" value="6">
+<input id="h2v" placeholder="Hidden 2" value="10">
+<button onclick="updateHiddenValues()">Update</button>
+<br><br>
+<div style="width:300px; border:1px solid black; margin:auto;">
+  <div id="stressBar" style="height:20px; width:0%; background:red;"></div>
+</div>
+<p id="stressText">Current Stress: 0%</p>
 
 <div id="chat"></div>
 <input id="input" placeholder="Say something">
 <button onclick="send()">Send</button>
+<br><br><br>
+<h3>What is this AI brain "stress"?</h3>
+<p>
+AI <i>brain stress</i> <strong>determines how “strained” the neural network is while processing information.</strong> It is calculated from how extreme the hidden neuron activations are. When activations stay near a balanced state (around 0.5), stress is low. When activations move toward extremes (0 or 1), stress increases, meaning <strong>the AI is making more rigid or overconfident decisions.</strong> High stress can indicate confusion, saturation, or limited flexibility in the network’s thinking process.
+</p>
+<h3>How do I reduce it?</h3>
+<p>
+To reduce AI brain stress, it is recommended to <strong>balance the number of hidden neurons</strong> and improve training conditions such as <strong>epoch count</strong> and <strong>data quality</strong>. The appropriate balance depends on the <strong>size of the network</strong> and how long it is trained (epochs). In general, <strong>increasing neuron capacity</strong> allows the model to distribute workload more effectively, while proper training duration ensures <strong>stable learning without overloading the system</strong>.
+</p>
 
 <script>
 // -------- DATA --------
@@ -34,10 +54,13 @@ let trainingData = [
     ["what are you", "i am an ancestor of all ai chatbots today."],
     ["what are you doing", "nothing, just scanning your input, think, and responding."],
     ["you're cool", "thanks."],
+    ["who's the owner of AmadOS", "owner was: CJM4"],
     ["do you have github", "no, i currently don't. But maybe soon."],
     ["what is ", "i do not know, since i can't search the web."],
     ["how do i get code of you", "i'm guessing CJM4 would say no."],
     ["source code", "nope."],
+    ["how stressed are you", "if you mean in my terms, i don't know, check the bottom. But if in\nreal brains, i don't have that kind of stress."],
+    ["what is brain stress", "in my terms, it just determines how saturated/overworked my neurons are.\nBut if in real brain terms, it's just anxiety i think."],
     ["what's your purpose", "i don't... exactly know. Maybe an experiment."],
     ["do you know ", "well i do not but maybe my owner does. (CJM4)"],
     ["make me a ", "i don't know how to make that yet."],
@@ -45,6 +68,8 @@ let trainingData = [
     ["tell me jokes", "i cannot tell jokes since i do not have a list for that."],
     ["bye", "goodbye."]
 ];
+
+let posibs = trainingData.length;
 
 let neuronPositions = {
     input: [],
@@ -56,6 +81,9 @@ let neuronPositions = {
 let lastHidden1 = [];
 let lastHidden2 = [];
 let lastOutput = [];
+
+let h1v = document.getElementById("h1v").value;
+let h2v = document.getElementById("h2v").value;
 
 // Build vocab
 let vocab = [...new Set(trainingData.flatMap(p => p[0].split(" ")))];
@@ -77,8 +105,8 @@ function responseVector(resp) {
 
 // -------- NETWORK --------
 let inputSize = vocab.length;
-let hiddenSize = 12;
-let hiddenSize2 = 14;
+let hiddenSize = h1v;
+let hiddenSize2 = h2v;
 let outputSize = responses.length;
 
 let W1 = Array.from({length: inputSize}, () =>
@@ -99,6 +127,54 @@ function sigmoid(x) {
 
 function sigmoidDeriv(x) {
     return x * (1 - x);
+}
+
+// functions to determine neuron "stress"/overload/overwork
+function layerStress(layer) {
+    return layer.reduce((sum, val) =>
+        sum + Math.abs(val - 0.5) * 2, 0
+    ) / layer.length;
+}
+
+function updateStressUI(stress) {
+    let percent = Math.floor(stress * 100);
+
+    let bar = document.getElementById("stressBar");
+    let text = document.getElementById("stressText");
+
+    bar.style.width = percent + "%";
+
+    // color gradient
+    bar.style.background =
+        percent < 30 ? "green" :
+        percent < 70 ? "orange" :
+        "red";
+
+    text.innerText = "Stress: " + percent + "%";
+}
+
+// set value of hiddens
+function updateHiddenValues(){
+    h1v = parseInt(document.getElementById("h1v").value);
+    h2v = parseInt(document.getElementById("h2v").value);
+
+    hiddenSize = h1v;
+    hiddenSize2 = h2v;
+
+    // REBUILD WEIGHTS
+    W1 = Array.from({length: inputSize}, () =>
+        Array.from({length: hiddenSize}, () => Math.random()*2-1)
+    );
+
+    W2 = Array.from({length: hiddenSize}, () =>
+        Array.from({length: hiddenSize2}, () => Math.random()*2-1)
+    );
+
+    W3 = Array.from({length: hiddenSize2}, () =>
+        Array.from({length: outputSize}, () => Math.random()*2-1)
+    );
+
+    drawBrain(); // redraw with new structure
 }
 
 // -------- TRAIN --------
@@ -129,6 +205,14 @@ async function train() {
             lastHidden1 = hidden1;
             lastHidden2 = hidden2;
             lastOutput = output;
+            
+            let stress1 = layerStress(hidden1);
+            let stress2 = layerStress(hidden2);
+
+            // combine both layers
+            let totalStress = (stress1 + stress2) / 2;
+
+            updateStressUI(totalStress);
             
             // ---- BACKWARD ----
             let dOutput = output.map((o, i) =>
@@ -350,14 +434,14 @@ function drawBrain(hidden1=[], hidden2=[], output=[]) {
     ctx.textAlign = "center";
 
     // Input label
-    ctx.fillText("Input (18 possibilities and answers)", canvas.width / 2, inputY - 25);
+    ctx.fillText(`Input (${posibs} possibilities and answers)`, canvas.width / 2, inputY - 25);
 
     // Hidden layers
     ctx.fillText("Hidden 1", canvas.width / 2, hidden1Y - 25);
     ctx.fillText("Hidden 2", canvas.width / 2, hidden2Y - 25);
 
     // Output
-    ctx.fillText("Output (uses one of the 18 answers)", canvas.width / 2, outputY - 25);
+    ctx.fillText(`Output (uses one of the ${posibs} answers)`, canvas.width / 2, outputY - 25);
 
     connect(1, hiddenSize, inputY, hidden1Y);
     connect(hiddenSize, hiddenSize2, hidden1Y, hidden2Y);
