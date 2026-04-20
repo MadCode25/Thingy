@@ -53,6 +53,8 @@ let trainingData = [
     ["who made you", "i was made by AmadOS."],
     ["what are you", "i am an ancestor of all ai chatbots today."],
     ["what are you doing", "nothing, just scanning your input, think, and responding."],
+    ["what do you do", "respond."],
+    ["who is better or ", "depends."],
     ["you're cool", "thanks."],
     ["who's the owner of AmadOS", "owner was: CJM4"],
     ["do you have github", "no, i currently don't. But maybe soon."],
@@ -180,75 +182,78 @@ function updateHiddenValues(){
 // -------- TRAIN --------
 async function train() {
     let epochs = parseInt(document.getElementById("epochs").value);
-    typeResponse("I'm ready, type something.")
+    typeResponse("I'm ready, type something.");
 
-    for (let e = 0; e < epochs; e++) {
-        for (let [inpText, outText] of trainingData) {
+    let batchSize = 20;
 
-            let inp = vectorize(inpText);
-            let target = responseVector(outText);
+    for (let e = 0; e < epochs; e += batchSize) {
 
-            // ---- FORWARD ----
-            let hidden1 = W1[0].map((_, j) =>
-                sigmoid(inp.reduce((sum, v, i) => sum + v * W1[i][j], 0))
-            );
+        for (let b = 0; b < batchSize && (e + b) < epochs; b++) {
 
-            let hidden2 = W2[0].map((_, j) =>
-                sigmoid(hidden1.reduce((sum, v, i) => sum + v * W2[i][j], 0))
-            );
+            for (let [inpText, outText] of trainingData) {
 
-            let output = W3[0].map((_, j) =>
-                sigmoid(hidden2.reduce((sum, v, i) => sum + v * W3[i][j], 0))
-            );
-            
-            
-            lastHidden1 = hidden1;
-            lastHidden2 = hidden2;
-            lastOutput = output;
-            
-            let stress1 = layerStress(hidden1);
-            let stress2 = layerStress(hidden2);
+                let inp = vectorize(inpText);
+                let target = responseVector(outText);
 
-            // combine both layers
-            let totalStress = (stress1 + stress2) / 2;
+                // ---- FORWARD ----
+                let hidden1 = W1[0].map((_, j) =>
+                    sigmoid(inp.reduce((sum, v, i) => sum + v * W1[i][j], 0))
+                );
 
-            updateStressUI(totalStress);
-            
-            // ---- BACKWARD ----
-            let dOutput = output.map((o, i) =>
-                (target[i] - o) * sigmoidDeriv(o)
-            );
+                let hidden2 = W2[0].map((_, j) =>
+                    sigmoid(hidden1.reduce((sum, v, i) => sum + v * W2[i][j], 0))
+                );
 
-            let dHidden2 = hidden2.map((h, i) =>
-                dOutput.reduce((sum, d, j) => sum + d * W3[i][j], 0) * sigmoidDeriv(h)
-            );
+                let output = W3[0].map((_, j) =>
+                    sigmoid(hidden2.reduce((sum, v, i) => sum + v * W3[i][j], 0))
+                );
 
-            let dHidden1 = hidden1.map((h, i) =>
-                dHidden2.reduce((sum, d, j) => sum + d * W2[i][j], 0) * sigmoidDeriv(h)
-            );
+                lastHidden1 = hidden1;
+                lastHidden2 = hidden2;
+                lastOutput = output;
 
-            // ---- UPDATE W3 ----
-            for (let i = 0; i < hiddenSize2; i++) {
-                for (let j = 0; j < outputSize; j++) {
-                    W3[i][j] += 0.1 * dOutput[j] * hidden2[i];
+                // ---- BACKWARD ----
+                let dOutput = output.map((o, i) =>
+                    (target[i] - o) * sigmoidDeriv(o)
+                );
+
+                let dHidden2 = hidden2.map((h, i) =>
+                    dOutput.reduce((sum, d, j) => sum + d * W3[i][j], 0) * sigmoidDeriv(h)
+                );
+
+                let dHidden1 = hidden1.map((h, i) =>
+                    dHidden2.reduce((sum, d, j) => sum + d * W2[i][j], 0) * sigmoidDeriv(h)
+                );
+
+                // ---- UPDATE ----
+                for (let i = 0; i < hiddenSize2; i++) {
+                    for (let j = 0; j < outputSize; j++) {
+                        W3[i][j] += 0.1 * dOutput[j] * hidden2[i];
+                    }
                 }
-            }
 
-            // ---- UPDATE W2 ----
-            for (let i = 0; i < hiddenSize; i++) {
-                for (let j = 0; j < hiddenSize2; j++) {
-                    W2[i][j] += 0.1 * dHidden2[j] * hidden1[i];
+                for (let i = 0; i < hiddenSize; i++) {
+                    for (let j = 0; j < hiddenSize2; j++) {
+                        W2[i][j] += 0.1 * dHidden2[j] * hidden1[i];
+                    }
                 }
-            }
 
-            // ---- UPDATE W1 ----
-            for (let i = 0; i < inputSize; i++) {
-                for (let j = 0; j < hiddenSize; j++) {
-                    W1[i][j] += 0.1 * dHidden1[j] * inp[i];
+                for (let i = 0; i < inputSize; i++) {
+                    for (let j = 0; j < hiddenSize; j++) {
+                        W1[i][j] += 0.1 * dHidden1[j] * inp[i];
+                    }
                 }
             }
         }
-    }
+
+        // update UI ONCE per batch
+        let stress1 = layerStress(lastHidden1);
+        let stress2 = layerStress(lastHidden2);
+        updateStressUI((stress1 + stress2) / 2);
+
+        // longer pause
+        await sleep(10);
+        }
 
     drawBrain();
 }
@@ -385,7 +390,7 @@ function drawBrain(hidden1=[], hidden2=[], output=[]) {
     let hidden2Y = 250;
     let outputY = 350;
 
-    let spacing = 780 / (Math.max(inputSize, hiddenSize, hiddenSize2, outputSize) + 1);
+    let spacing = 1100 / (Math.max(inputSize, hiddenSize, hiddenSize2, outputSize) + 1);
 
     function drawLayer(count, y, values = [], storeKey) {
     let layerWidth = spacing * (count - 1);
