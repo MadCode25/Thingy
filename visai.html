@@ -13,7 +13,7 @@ canvas { border: 1px solid black; margin-bottom: 10px; }
 
 <h2>🧠 AI Chatbot (with visible brain)</h2>
 
-<canvas id="brain" width="1000" height="400"></canvas><br>
+<canvas id="brain" width="800" height="400"></canvas><br>
 Train first, before chatting or unexpected
 <br>responses will happen. (Recommended epochs: 4000)
 <br>
@@ -33,6 +33,9 @@ let trainingData = [
     ["who made you", "i was made by AmadOS."],
     ["what are you", "i am an ancestor of all ai chatbots today."],
     ["what are you doing", "nothing, just scanning your input, think, and responding."],
+    ["you're cool", "thanks."],
+    ["do you have github", "no, i currently don't. But maybe soon."],
+    ["what is ", "i do not know, since i can't search the web."],
     ["how do i get code of you", "i'm guessing CJM4 would say no."],
     ["source code", "nope."],
     ["what's your purpose", "i don't... exactly know. Maybe an experiment."],
@@ -74,8 +77,8 @@ function responseVector(resp) {
 
 // -------- NETWORK --------
 let inputSize = vocab.length;
-let hiddenSize = 14;
-let hiddenSize2 = 8
+let hiddenSize = 12;
+let hiddenSize2 = 14;
 let outputSize = responses.length;
 
 let W1 = Array.from({length: inputSize}, () =>
@@ -126,7 +129,7 @@ async function train() {
             lastHidden1 = hidden1;
             lastHidden2 = hidden2;
             lastOutput = output;
-
+            
             // ---- BACKWARD ----
             let dOutput = output.map((o, i) =>
                 (target[i] - o) * sigmoidDeriv(o)
@@ -285,6 +288,8 @@ async function drawStep(hidden1, hidden2, output) {
 
 
 
+
+
 function drawBrain(hidden1=[], hidden2=[], output=[]) {
     let canvas = document.getElementById("brain");
     let ctx = canvas.getContext("2d");
@@ -296,7 +301,7 @@ function drawBrain(hidden1=[], hidden2=[], output=[]) {
     let hidden2Y = 250;
     let outputY = 350;
 
-    let spacing = 1000 / (Math.max(inputSize, hiddenSize, hiddenSize2, outputSize) + 1);
+    let spacing = 780 / (Math.max(inputSize, hiddenSize, hiddenSize2, outputSize) + 1);
 
     function drawLayer(count, y, values = [], storeKey) {
     let layerWidth = spacing * (count - 1);
@@ -311,13 +316,13 @@ function drawBrain(hidden1=[], hidden2=[], output=[]) {
         neuronPositions[storeKey].push({x, y});
 
         ctx.beginPath();
-        ctx.arc(x, y, 15, 0, 2 * Math.PI);
+        ctx.arc(x, y, 12, 0, 2 * Math.PI);
         ctx.fillStyle = `rgb(${val * 255},0,0)`;
         ctx.fill();
     }
 }
 
-    drawLayer(inputSize, inputY, [], "input");
+    drawLayer(1, inputY, [], "input");
     drawLayer(hiddenSize, hidden1Y, hidden1, "h1");
     drawLayer(hiddenSize2, hidden2Y, hidden2, "h2");
     drawLayer(outputSize, outputY, output, "out");
@@ -345,16 +350,16 @@ function drawBrain(hidden1=[], hidden2=[], output=[]) {
     ctx.textAlign = "center";
 
     // Input label
-    ctx.fillText("Input", canvas.width / 2, inputY - 25);
+    ctx.fillText("Input (18 possibilities and answers)", canvas.width / 2, inputY - 25);
 
     // Hidden layers
     ctx.fillText("Hidden 1", canvas.width / 2, hidden1Y - 25);
     ctx.fillText("Hidden 2", canvas.width / 2, hidden2Y - 25);
 
     // Output
-    ctx.fillText("Output", canvas.width / 2, outputY - 25);
+    ctx.fillText("Output (uses one of the 18 answers)", canvas.width / 2, outputY - 25);
 
-    connect(inputSize, hiddenSize, inputY, hidden1Y);
+    connect(1, hiddenSize, inputY, hidden1Y);
     connect(hiddenSize, hiddenSize2, hidden1Y, hidden2Y);
     connect(hiddenSize2, outputSize, hidden2Y, outputY);
 }
