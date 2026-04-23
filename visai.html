@@ -13,7 +13,7 @@ canvas { border: 1px solid black; margin-bottom: 10px; }
 
 <h2>🧠 AI Chatbot (with visible brain)</h2>
 
-<canvas id="brain" width="800" height="400"></canvas><br>
+<canvas id="brain" width="1200" height="400"></canvas><br>
 Train first, before chatting or unexpected
 <br>responses will happen. (Recommended epochs: 4000)
 <br><br>
@@ -51,17 +51,28 @@ let trainingData = [
     ["hi", "hello"],
     ["how are you", "i am fine"],
     ["who made you", "i was made by AmadOS."],
+    ["who is your owner", "CJM4(FB)/MadCode25(GITHUB)"],
     ["what are you", "i am an ancestor of all ai chatbots today."],
+    ["what are epochs", "the number of times i fix my mistakes, or think."],
+    ["what are epoch", "the number of times i fix my mistakes, or think."],
     ["what are you doing", "nothing, just scanning your input, think, and responding."],
+    ["youre dumb", "i'm not, i just use something called 'bag of words' to think.\nSo i only have a limited number of responses."],
+    ["wrong", "oh, sorry, please tell me what it means."],
+    ["you're dumb", "i'm not, i just use something called 'bag of words' to think.\nSo i only have a limited number of responses."],
+    ["youre stupid", "i'm not, i just use something called 'bag of words' to think.\nSo i only have a limited number of responses."],
+    ["you're stupid", "i'm not, i just use something called 'bag of words' to think.\nSo i only have a limited number of responses."],
     ["what do you do", "respond."],
     ["who is better or ", "depends."],
     ["you're cool", "thanks."],
     ["who's the owner of AmadOS", "owner was: CJM4"],
     ["do you have github", "no, i currently don't. But maybe soon."],
     ["what is ", "i do not know, since i can't search the web."],
+    ["what is your name","i do not have a name, but for my model it's Rubbot 3.6 (v0.1.5)."],
     ["how do i get code of you", "i'm guessing CJM4 would say no."],
     ["source code", "nope."],
-    ["how stressed are you", "if you mean in my terms, i don't know, check the bottom. But if in\nreal brains, i don't have that kind of stress."],
+    ["what's your github", "https://github.com/MadCode25/neural-network-rubbot-4"],
+    ["what does mean", "i dunno."],
+    ["how stressed are you", "if you mean in my terms, check the bottom. But if in\nreal brains, i don't have that kind of stress."],
     ["what is brain stress", "in my terms, it just determines how saturated/overworked my neurons are.\nBut if in real brain terms, it's just anxiety i think."],
     ["what's your purpose", "i don't... exactly know. Maybe an experiment."],
     ["do you know ", "well i do not but maybe my owner does. (CJM4)"],
@@ -182,7 +193,7 @@ function updateHiddenValues(){
 // -------- TRAIN --------
 async function train() {
     let epochs = parseInt(document.getElementById("epochs").value);
-    typeResponse("I'm ready, type something.");
+    typeResponse("Bot: I am currently being trained, please wait...");
 
     let batchSize = 20;
 
@@ -256,6 +267,7 @@ async function train() {
         }
 
     drawBrain();
+    typeResponse("Bot: I'm trained, type something.")
 }
 
 // -------- UTILS --------
@@ -390,7 +402,7 @@ function drawBrain(hidden1=[], hidden2=[], output=[]) {
     let hidden2Y = 250;
     let outputY = 350;
 
-    let spacing = 1100 / (Math.max(inputSize, hiddenSize, hiddenSize2, outputSize) + 1);
+    let spacing = 1200 / (Math.max(inputSize, hiddenSize, hiddenSize2, outputSize) + 1);
 
     function drawLayer(count, y, values = [], storeKey) {
     let layerWidth = spacing * (count - 1);
