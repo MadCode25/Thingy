@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Pyodide Canvas Demo</title>
+  <script src="https://cdn.jsdelivr.net/pyodide/v0.27.0/full/pyodide.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Syne:wght@700&display=swap');
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0d0d0f;
+      --surface: #16161a;
+      --border: #2a2a30;
+      --blue: #3b82f6;
+      --blue-dim: #1d4ed8;
+      --text: #e2e2e8;
+      --muted: #6b6b7a;
+      --green: #22c55e;
+      --amber: #f59e0b;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'JetBrains Mono', monospace;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 24px;
+      padding: 32px 16px;
+    }
+
+    h1 {
+      font-family: 'Syne', sans-serif;
+      font-size: 1.6rem;
+      letter-spacing: -0.02em;
+      color: var(--text);
+    }
+
+    h1 span {
+      color: var(--blue);
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      width: 100%;
+      max-width: 560px;
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border);
+      background: #111114;
+    }
+
+    .dot { width: 10px; height: 10px; border-radius: 50%; }
+    .dot-r { background: #ff5f57; }
+    .dot-y { background: #febc2e; }
+    .dot-g { background: #28c840; }
+
+    .card-title {
+      font-size: 0.7rem;
+      color: var(--muted);
+      margin-left: 4px;
+      letter-spacing: 0.05em;
+    }
+    
+    button {
+        background-color: #166bf5;
+        border: none;
+        border-radius: 10px;
+        padding: 10px;
+        font-family: 'Syne';
+        color: white;
+        cursor: pointer;
+    }
+    
+    pre {
+      padding: 20px;
+      font-size: 0.78rem;
+      line-height: 1.7;
+      overflow-x: auto;
+      color: #a5b4d0;
+    }
+
+    .kw  { color: #c084fc; }
+    .fn  { color: #60a5fa; }
+    .str { color: #86efac; }
+    .cm  { color: #4b5563; font-style: italic; }
+    .num { color: #fbbf24; }
+
+    canvas {
+      display: block;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: #111114;
+      max-width: 100%;
+    }
+
+    #status {
+      font-size: 0.72rem;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .special {
+        background-color: #1e1e1f;
+        width: 520px;
+        border-radius: 10px;
+        padding: 20px;
+        height: 300px;
+        border: 2px solid #333;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 0.68rem;
+      padding: 3px 10px;
+      border-radius: 999px;
+      border: 1px solid;
+    }
+
+    .badge.loading { color: var(--amber); border-color: #78350f; background: #1c1208; }
+    .badge.done    { color: var(--green); border-color: #14532d; background: #071a0e; }
+
+    .pulse {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: currentColor;
+      animation: pulse 1s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.2; }
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Neural Network</h1>
+  <!-- Status -->
+  <div id="status">
+    <span class="badge loading" id="badge">
+      <span class="pulse"></span>
+      loading pyodide…
+    </span>
+  </div>
+
+  <!-- Canvas output -->
+  <canvas id="c" width="520" height="320"></canvas>
+  <div class="special"><p>Output:</p><br><span id="tab">Pyodide is still not loaded.</span></div>
+
+  <script>
+    async function main() {
+      const pyodide = await loadPyodide();
+
+      const badge = document.getElementById('badge');
+      badge.className = 'badge done';
+      badge.innerHTML = '<span style="width:6px;height:6px;border-radius:50%;background:currentColor;display:inline-block"></span> pyodide ready · running python…';
+
+      pyodide.runPython(`
+from js import document
+from pyodide.ffi import create_proxy
+
+canvas = document.getElementById('c')
+ctx    = canvas.getContext('2d')
+out    = document.getElementById("tab")
+
+# background
+ctx.fillStyle = '#111114'
+ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+# glow shadow
+ctx.shadowColor = '#3b82f6'
+ctx.shadowBlur  = 24
+
+# blue rectangle
+ctx.fillStyle = '#3b82f6'
+ctx.fillRect(120, 90, 280, 140)
+ctx.shadowBlur = 0
+
+# label
+ctx.fillStyle = 'white'
+ctx.font      = 'bold 15px JetBrains Mono'
+ctx.fillText('drawn by Python, yeah! 🐍', 162, 168)
+
+out.textContent = "Hello from Python!"
+
+# create the button in Python
+btn = document.createElement("button")
+btn.textContent = "Click me for a surprise!"
+
+def surprise(event):
+    ctx.fillStyle = '#ef4444'
+    ctx.beginPath()
+    ctx.arc(260, 160, 60, 0, 3.14159 * 2)
+    ctx.fill()
+    ctx.fillStyle = 'white'
+    ctx.font = 'bold 14px JetBrains Mono'
+    ctx.fillText('SURPRISE! 🎉', 210, 165)
+
+btn.addEventListener("click", create_proxy(surprise))
+out.appendChild(btn)
+      `);
+
+      badge.innerHTML = '<span style="width:6px;height:6px;border-radius:50%;background:currentColor;display:inline-block"></span> done ✓';
+    }
+
+    main();
+  </script>
+</body>
+</html>
