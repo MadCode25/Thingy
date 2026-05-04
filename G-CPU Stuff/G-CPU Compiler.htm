@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>G-OS Fiction CPU - With Fake BIOS</title>
+
+    <style>
+        body {
+            font-family: monospace;
+            background: #111;
+            color: #0f0;
+        }
+
+        #container {
+            display: flex;
+            gap: 20px;
+        }
+
+        textarea {
+            width: 700px;
+            height: 300px;
+            background: #000;
+            color: #0f0;
+            resize: none;
+        }
+
+        button {
+            margin: 5px;
+        }
+
+        .box {
+            border: 1px solid #0f0;
+            padding: 10px;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>G-CPU With BIOS</h1>
+    <p>This CPU emulator has a fake BIOS, named "TinBIOS", v0.2.9</p>
+
+    <div id="container">
+
+        <!-- PROGRAM BOX -->
+        <div class="box">
+            <h3>Program</h3>
+
+            <textarea id="code">
+MOV AL "Hello, World!"
+INT 0x10
+HLT
+            </textarea>
+
+            <br>
+
+            <label for="programs">Test Programs</label>
+            <br>
+
+            <select name="programs" id="chooseprogram">
+                <option>None</option>
+                <option value="inc_a_2_times">Increment A 2 times</option>
+                <option value="print_8_and_a_msg">Print numbers and txts with INTs</option>
+                <option value="color_test">AX Test</option>
+            </select>
+
+            <br>
+
+            <button onclick="run()">Run</button>
+            <button onclick="step()">Step</button>
+            <button onclick="halt()">Halt</button>
+            <button onclick="saveProg()">Save</button>
+            <button onclick="openProg()">Open</button>
+
+            <h4>Clock Speed</h4>
+            <input type="range" id="clock" min="20" max="1000" value="20">
+            <span id="clockVal">50.00 Hz</span>
+        </div>
+
+        <!-- REGISTERS -->
+        <div class="box">
+            <h3>Registers</h3>
+            A: <span id="A">0</span><br>
+            B: <span id="B">0</span><br>
+            AL: <span id="AL"></span><br>
+            AX: <span id="AX">0x00</span><br>
+            PC: <span id="PC">0</span><br>
+            IR: <span id="IR">0</span>
+        </div>
+
+        <!-- OUTPUT -->
+        <div class="box">
+            <h3>Output</h3>
+            <div id="output">
+                Random Tip: UNKIR is short for "(UNK)NOWN (I)NST(R)UCTION."<br>
+                Fact: Use DFC to set your text color back to normal.
+            </div>
+        </div>
+
+    </div>
+
+    <p>
+        TinBIOS Interrupts:<br>
+        0x10 - Print Interrupt<br>
+        0x11 - Print A's value directly.<br>
+        0x1A - Request input and store in A.<br>
+        0x1B - Request input and store in B.<br>
+        0x0F - Increment A.
+        <br>
+        What AX is for:<br>
+        AX is used to set color of the text in BIOS, (all text)<br>
+        in the format of HEX (Form: 0x123456)
+    </p>
+
+    <script>
+        let A = 0, B = 0, PC = 0, AL = "", AX = 0x00, IR = 0;
+        let program = [];
+        let running = false;
+        let clockSpeed = 20;
+
+        const clockSlider = document.getElementById("clock");
+        const clockVal = document.getElementById("clockVal");
+        const menu = document.getElementById("chooseprogram");
+
+        menu.addEventListener('change', (event) => {
+    const val = event.target.value;
+    const codeDisplay = document.getElementById("code");
+
+    switch (val) {
+        case "inc_a_2_times":
+            codeDisplay.value =
+`SET A 5
+INT 0x0F
+JAN 6 1
+INT 0x11
+HLT`;
+            break;
+
+        case "print_8_and_a_msg":
+            codeDisplay.value =
+`SET A 6
+ADD A 2
+MOV AL "Wow, 8 is coming!"
+INT 0x10
+INT 0x11
+HLT`;
+            break;
+
+        case "color_test":
+            codeDisplay.value =
+`MOV AX 0xFF0000
+MOV AL "This text is Red"
+INT 0x10
+MOV AX 0x000FFF
+MOV AL "This text is Blue"
+INT 0x10
+
+MOV AX DFC
+MOV AL "This text is back to Green. (default)"
+INT 0x10
+
+HLT`;
+            break;
+
+        default:
+            codeDisplay.value = "";
+    }
+});
+
+        clockSlider.oninput = function () {
+            let delayMs = Number(this.value);
+            clockSpeed = delayMs;
+
+            let hz = (1000 / delayMs).toFixed(2);
+            clockVal.textContent = hz + " Hz";
+        };
+
+        function parseCode() {
+            program = document.getElementById("code").value.split("\n");
+        }
+
+        function updateUI() {
+            document.getElementById("A").textContent = A;
+            document.getElementById("B").textContent = B;
+            document.getElementById("AL").textContent = AL;
+            document.getElementById("AX").textContent = AX;
+            document.getElementById("IR").textContent = IR;
+            document.getElementById("PC").textContent = PC;
+        }
+
+        function tokenize(line) {
+            return line.match(/"[^"]*"|\S+/g) || [];
+        }
+
+        function execute(instr) {
+            let parts = tokenize(instr);
+
+            if (parts.length === 0) {
+                PC++;
+                return;
+            }
+
+            let op = parts[0];
+
+            if (op === "SET") {
+                if (parts[1] === "A") A = Number(parts[2]);
+                else if (parts[1] === "B") B = Number(parts[2]);
+            }
+
+            else if (op === "ADD") {
+                let val = (parts[2] === "A") ? A :
+                          (parts[2] === "B") ? B :
+                          Number(parts[2]);
+
+                if (parts[1] === "A") A += Number(val);
+                else if (parts[1] === "B") B += Number(val);
+            }
+
+            else if (op === "SUB") {
+                let val = (parts[2] === "A") ? A :
+                          (parts[2] === "B") ? B :
+                          Number(parts[2]);
+
+                if (parts[1] === "A") A -= val;
+                else if (parts[1] === "B") B -= val;
+            }
+
+            else if (op === "MOV") {
+                if (parts[1] === "A" && parts[2] === "B") A = B;
+                else if (parts[1] === "B" && parts[2] === "A") B = A;
+                else if (parts[1] === "AL" && parts[2] === "A") AL = String(A);
+                else if (parts[1] === "AL" && parts[2] === "B") AL = String(B);
+                else if (parts[1] === "AL") AL = parts[2].replace(/"/g, "");
+                else if (parts[1] === "AX") {
+    AX = parts[2];
+}
+                else {
+                    running = false;
+                    document.getElementById("output").innerHTML += "Error: Invalid MOV.<br>";
+                }
+            }
+
+            else if (op === "JMP") {
+                PC = Number(parts[1]);
+                return;
+            }
+
+            else if (op === "JZ") {
+                if (A === 0) {
+                    PC = Number(parts[1]);
+                    return;
+                }
+            }
+
+            else if (op === "JAN") {
+                if (A === Number(parts[1])) {
+                    PC = Number(parts[2]);
+                    return;
+                }
+            }
+
+            else if (op === "INT") {
+                if (parts[1] === "0x10") {
+                    let color = AX;
+
+                    if (typeof color === "string" && color.startsWith("0x")) {
+    color = "#" + color.substring(2);
+}                   else if(color === "def" || color === "DFC"){
+  document.getElementById("AX").textContent = "#0F0"
+  color = "#00FF00"
+}
+
+                    document.getElementById("output").innerHTML += `<span style="color: ${color}">${AL}</span>` + "<br>";
+                }
+                else if (parts[1] === "0x11") {
+                    document.getElementById("output").innerHTML += A + "<br>";
+                }
+                else if (parts[1] === "0x0F") {
+                    A += 1;
+                }
+                else if (parts[1] === "0x2F"){
+                    A -= 1;
+                }
+                else if (parts[1] === "0x1A"){
+                  val = prompt("User Input: ");
+                  A = Number(val);
+                }
+                else if (parts[1] === "0x1B"){
+                  val = prompt("User Input: ");
+                  B = Number(val);
+                }
+                else {
+                    running = false;
+                    document.getElementById("output").innerHTML += "Error: Invalid interrupt.<br>";
+                }
+            }
+
+            else if (op === "HLT") {
+                running = false;
+                return;
+            }
+
+            PC++;
+            IR = convertInstrToNum(instr);
+        }
+
+        function step() {
+            if (PC >= program.length) return;
+
+            execute(program[PC]);
+            updateUI();
+        }
+
+        function run() {
+            parseCode();
+
+            A = 0;
+            B = 0;
+            PC = 0;
+            AL = "";
+
+            document.getElementById("output").innerHTML = "";
+            running = true;
+
+            function loop() {
+                if (!running || PC >= program.length) return;
+
+                step();
+                setTimeout(loop, clockSpeed);
+            }
+
+            loop();
+        }
+
+        function convertInstrToNum(instr) {
+            let op = tokenize(instr)[0];
+
+            switch (op) {
+                case "SET": return "12";
+                case "MOV": return "15";
+                case "INT": return "10";
+                case "ADD": return "16";
+                case "SUB": return "17";
+                case "JMP": return "19";
+                case "JZ": return "1";
+                case "JAN": return "4";
+                case "HLT": return "20";
+                
+                default:
+                    return "UNKIR";
+            }
+        }
+
+        function halt() {
+            running = false;
+        }
+        
+        function convertRegToNum(reg) {
+    switch (reg.toUpperCase()) {
+        case "A":  return "0x0";
+        case "B":  return "0xA";
+        case "AL": return "0x3";
+        case "AX": return "0xF";
+        default:   return reg; // If it's a number or string, keep it as is
+    }
+}
+        
+function compileToCustomHex(code) {
+    let lines = code.split('\n');
+    let output = [];
+
+    lines.forEach(line => {
+        let parts = tokenize(line);
+        if (parts.length === 0) return;
+
+        let opCode = convertInstrToNum(parts[0]);
+        
+        let args = parts.slice(1).map(arg => {
+            let regNum = convertRegToNum(arg);
+            if (typeof regNum === "string") {
+                return regNum.replace(/"/g, "");
+            }
+            return regNum;
+        });
+
+        output.push(`${opCode} ${args.join(' ')}`);
+    });
+
+    return output.join('\n');
+}
+
+function saveProg() {
+    const code = document.getElementById("code").value;
+    let name = prompt("Enter Program name:", "MyProgram");
+    if (!name) return;
+
+    localStorage.setItem(name, code);
+    
+    let wantFile = prompt("Do you want to save it to your computer? Y/N (ghex)");
+    
+    if (wantFile && wantFile.toLowerCase() === "y") {
+        let compiledCode = compileToCustomHex(code);
+        saveFile(compiledCode, name + ".ghex");
+    }
+}
+function saveProg() {
+    const code = document.getElementById("code").value;
+    let name = prompt("Enter Program name:", "MyProgram");
+    if (!name) return;
+
+    localStorage.setItem(name, code);
+    
+    let wantFile = prompt("Do you want to save it to your computer? Y/N (ghex)");
+    
+    if (wantFile && wantFile.toLowerCase() === "y") {
+        // Now calling the improved compiler
+        let compiledCode = compileToCustomHex(code);
+        saveFile(compiledCode, name + ".ghex");
+    }
+}
+
+function openProg() {
+  let name = prompt("Enter Program name:", "MyProgram");
+  const code = document.getElementById("code");
+  code.value = localStorage.getItem(name);
+}
+
+function saveFile(content, filename) {
+    const blob = new Blob([content], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click(); // Triggers the download
+    
+    // Clean up
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+    </script>
+
+</body>
+
+</html>

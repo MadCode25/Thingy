@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>G-CPU Decompiler</title>
+
+    <style>
+        body {
+            font-family: monospace;
+            background: #111;
+            color: #0f0;
+        }
+
+        #container {
+            display: flex;
+            gap: 20px;
+        }
+
+        textarea {
+            width: 700px;
+            height: 300px;
+            background: #000;
+            color: #0f0;
+            resize: none;
+        }
+
+        button {
+            margin: 5px;
+        }
+
+        .box {
+            border: 1px solid #0f0;
+            padding: 10px;
+        }
+
+        #termOutput {
+            width: 400px;
+            height: 260px;
+            background: #000;
+            color: #0f0;
+            overflow-y: auto;
+            padding: 6px;
+            border: 1px solid #0f0;
+            margin-bottom: 4px;
+        }
+
+        #termInputRow {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        #termInput {
+            background: #000;
+            color: #0f0;
+            border: none;
+            outline: none;
+            font-family: monospace;
+            font-size: 14px;
+            flex: 1;
+            caret-color: #0f0;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>G-CPU Decompiler</h1>
+    <p>Converts .ghex bytecode back into G-CPU assembly.</p>
+
+    <div id="container">
+
+        <!-- INPUT BOX -->
+        <div class="box">
+            <h3>Bytecode Input (.ghex)</h3>
+            <textarea id="hexIn" placeholder="Paste .ghex content here..."></textarea>
+            <br>
+            <button onclick="decompile()">Decompile</button>
+            <button onclick="loadSample()">Load Sample</button>
+            <button onclick="clearAll()">Clear</button>
+            <button onclick="loadFile()">Open .ghex</button>
+            <input type="file" id="fileInput" accept=".ghex,.txt" style="display:none" onchange="readFile(this)">
+        </div>
+
+        <!-- OUTPUT BOX -->
+        <div class="box">
+            <h3>Assembly Output</h3>
+            <textarea id="asmOut" readonly></textarea>
+            <br>
+            <button onclick="copyAsm()">Copy</button>
+            <button onclick="downloadAsm()">Download .gasm</button>
+            <button onclick="saveToEmulator()">Save to Emulator</button>
+        </div>
+
+        <!-- TERMINAL BOX -->
+        <div class="box">
+            <h3>Terminal</h3>
+            <div id="termOutput"></div>
+            <div id="termInputRow">
+                <span>G:\&gt;</span>
+                <input id="termInput" type="text" autocomplete="off" spellcheck="false" onkeydown="handleKey(event)">
+            </div>
+        </div>
+
+    </div>
+
+    <p>
+        Notes:<br>
+        - Unknown opcodes are shown as comments (;)<br>
+        - MOV AL strings are re-quoted automatically<br>
+        - Save to Emulator stores assembly in localStorage as "DecompiledProg"<br>
+        <br>
+        Terminal Commands:<br>
+        glang run — run the decompiled assembly<br>
+        glang run hex — run the raw .ghex bytecode directly<br>
+        echo &lt;text&gt; — print text<br>
+        clr — clear terminal<br>
+        help — list commands<br>
+        status — show register state from last run
+    </p>
+
+    <script>
+        const OPCODE_MAP = {
+            "12": "SET", "15": "MOV", "10": "INT", "16": "ADD",
+            "17": "SUB", "19": "JMP", "1": "JZ", "4": "JAN", "20": "HLT"
+        };
+
+        const REG_MAP = { "0x0": "A", "0xa": "B", "0x3": "AL", "0xf": "AX" };
+        const REGS = new Set(["A", "B", "AL", "AX"]);
+
+        let lastRegisters = null;
+        let cmdHistory = [];
+        let historyIdx = -1;
+
+        function deregister(tok) {
+            return REG_MAP[tok.toLowerCase()] || tok;
+        }
+
+        function decompileLine(line) {
+            line = line.trim();
+            if (!line || line.startsWith(";")) return { asm: line, warn: false };
+
+            const spaceIdx = line.indexOf(" ");
+            if (spaceIdx === -1) {
+                const mnemonic = OPCODE_MAP[line];
+                if (!mnemonic) return { asm: "; UNKNOWN OPCODE: " + line, warn: true };
+                return { asm: mnemonic, warn: false };
+            }
+
+            const opcode = line.substring(0, spaceIdx);
+            const rest = line.substring(spaceIdx + 1);
+            const mnemonic = OPCODE_MAP[opcode];
+
+            if (!mnemonic) return { asm: "; UNKNOWN OPCODE: " + line, warn: true };
+
+            const restSpace = rest.indexOf(" ");
+            if (restSpace === -1) {
+                return { asm: mnemonic + " " + deregister(rest), warn: false };
+            }
+
+            const firstArg = deregister(rest.substring(0, restSpace));
+            const remainder = rest.substring(restSpace + 1);
+
+            if (mnemonic === "MOV" && firstArg === "AL" && !REGS.has(remainder)) {
+                return { asm: 'MOV AL "' + remainder + '"', warn: false };
+            }
+
+            const allArgs = rest.split(" ").map(deregister);
+            return { asm: mnemonic + " " + allArgs.join(" "), warn: false };
+        }
+
+        function decompile() {
+            const input = document.getElementById("hexIn").value.trim();
+            if (!input) {
+                document.getElementById("status") && (document.getElementById("status").innerHTML = "Error: No input.");
+                return false;
+            }
+
+            const lines = input.split("\n");
+            const out = [];
+            let warnings = 0;
+
+            lines.forEach(line => {
+                const result = decompileLine(line);
+                if (result.warn) warnings++;
+                out.push(result.asm);
+            });
+
+            document.getElementById("asmOut").value = out.join("\n");
+            return true;
+        }
+
+        // ── Assembly interpreter ──────────────────────────────────────────
+
+        function tokenize(line) {
+            return line.match(/"[^"]*"|\S+/g) || [];
+        }
+
+        function runAssembly(code) {
+            let A = 0, B = 0, AL = "", AX = "0x00";
+            let PC = 0;
+            const program = code.split("\n");
+            const MAX_STEPS = 10000;
+            let steps = 0;
+
+            while (PC < program.length && steps < MAX_STEPS) {
+                steps++;
+                const line = program[PC].trim();
+                if (!line || line.startsWith(";")) { PC++; continue; }
+
+                const parts = tokenize(line);
+                if (!parts.length) { PC++; continue; }
+
+                const op = parts[0];
+
+                if (op === "SET") {
+                    if (parts[1] === "A") A = Number(parts[2]);
+                    else if (parts[1] === "B") B = Number(parts[2]);
+                }
+                else if (op === "MOV") {
+                    if (parts[1] === "A" && parts[2] === "B") A = B;
+                    else if (parts[1] === "B" && parts[2] === "A") B = A;
+                    else if (parts[1] === "AL" && parts[2] === "A") AL = String(A);
+                    else if (parts[1] === "AL" && parts[2] === "B") AL = String(B);
+                    else if (parts[1] === "AL") AL = parts[2].replace(/"/g, "");
+                    else if (parts[1] === "AX") AX = parts[2];
+                }
+                else if (op === "ADD") {
+                    let val = parts[2] === "A" ? A : parts[2] === "B" ? B : Number(parts[2]);
+                    if (parts[1] === "A") A += val;
+                    else if (parts[1] === "B") B += val;
+                }
+                else if (op === "SUB") {
+                    let val = parts[2] === "A" ? A : parts[2] === "B" ? B : Number(parts[2]);
+                    if (parts[1] === "A") A -= val;
+                    else if (parts[1] === "B") B -= val;
+                }
+                else if (op === "INT") {
+                    if (parts[1] === "0x10") {
+                        let color = AX;
+                        if (typeof color === "string" && color.startsWith("0x")) color = "#" + color.substring(2);
+                        else if (color === "DFC" || color === "def") color = "#00ff00";
+                        termPrint('<span style="color:' + color + '">' + AL + '</span>');
+                    }
+                    else if (parts[1] === "0x11") { termPrint(String(A)); }
+                    else if (parts[1] === "0x0F") { A += 1; }
+                    else if (parts[1] === "0x1A") { let v = prompt("Input:"); A = Number(v); }
+                    else if (parts[1] === "0x2F") {A -= 1;}
+                    else if (parts[1] === "0x1B") { let v = prompt("Input:"); B = Number(v); }
+                    else { termPrint('<span style="color:#f44">Error: Invalid interrupt ' + parts[1] + '</span>'); break; }
+                }
+                else if (op === "JMP") { PC = Number(parts[1]); continue; }
+                else if (op === "JZ")  { if (A === 0) { PC = Number(parts[1]); continue; } }
+                else if (op === "JAN") { if (A === Number(parts[1])) { PC = Number(parts[2]); continue; } }
+                else if (op === "HLT") { break; }
+
+                PC++;
+            }
+
+            if (steps >= MAX_STEPS) termPrint('<span style="color:#f44">Error: max steps reached (infinite loop?)</span>');
+
+            lastRegisters = { A, B, AL, AX };
+        }
+
+        // ── .ghex direct runner ───────────────────────────────────────────
+
+        function runGhex(code) {
+            // decompile on the fly then run
+            const lines = code.split("\n");
+            const out = [];
+            lines.forEach(line => out.push(decompileLine(line).asm));
+            runAssembly(out.join("\n"));
+        }
+
+        // ── Terminal ──────────────────────────────────────────────────────
+
+        function termPrint(html) {
+            const t = document.getElementById("termOutput");
+            t.innerHTML += html + "<br>";
+            t.scrollTop = t.scrollHeight;
+        }
+
+        function handleKey(e) {
+            const input = document.getElementById("termInput");
+
+            if (e.key === "Enter") {
+                const cmd = input.value.trim();
+                input.value = "";
+                if (!cmd) return;
+
+                cmdHistory.unshift(cmd);
+                historyIdx = -1;
+
+                termPrint("G:\\&gt; " + cmd);
+                runCommand(cmd);
+            }
+
+            if (e.key === "ArrowUp") {
+                if (historyIdx < cmdHistory.length - 1) historyIdx++;
+                input.value = cmdHistory[historyIdx] || "";
+                e.preventDefault();
+            }
+
+            if (e.key === "ArrowDown") {
+                if (historyIdx > 0) historyIdx--;
+                else historyIdx = -1;
+                input.value = historyIdx >= 0 ? cmdHistory[historyIdx] : "";
+                e.preventDefault();
+            }
+        }
+
+        function runCommand(cmd) {
+            const parts = cmd.trim().split(" ");
+            const base = parts[0].toLowerCase();
+
+            if (cmd.toLowerCase() === "glang run") {
+                const asm = document.getElementById("asmOut").value.trim();
+                if (!asm) {
+                    termPrint('<span style="color:#f44">No assembly loaded. Run Decompile first.</span>');
+                    return;
+                }
+                termPrint("Running assembly...");
+                runAssembly(asm);
+                termPrint(`<span style='color:gray'>>--- Program Successfully Ran ---<</span>`);
+            }
+
+            else if (cmd.toLowerCase() === "glang run hex") {
+                const hex = document.getElementById("hexIn").value.trim();
+                if (!hex) {
+                    termPrint('<span style="color:#f44">No .ghex input loaded.</span>');
+                    return;
+                }
+                termPrint("Running .ghex directly...");
+                runGhex(hex);
+                termPrint(`<span style='color:gray'>>--- Program Successfully Ran ---<</span>`);
+            }
+
+            else if (base === "echo") {
+                termPrint(parts.slice(1).join(" "));
+            }
+
+            else if (base === "clr" || base === "clear") {
+                document.getElementById("termOutput").innerHTML = "";
+            }
+
+            else if (base === "help") {
+                termPrint("Commands:");
+                termPrint("  glang run      — run decompiled assembly");
+                termPrint("  glang run hex  — run raw .ghex bytecode");
+                termPrint("  echo &lt;text&gt;   — print text");
+                termPrint("  clr            — clear terminal");
+                termPrint("  status         — show last register state");
+                termPrint("  help           — show this list");
+            }
+
+            else if (base === "status") {
+                if (!lastRegisters) {
+                    termPrint("No program has been run yet.");
+                } else {
+                    const r = lastRegisters;
+                    termPrint("A:  " + r.A);
+                    termPrint("B:  " + r.B);
+                    termPrint("AL: " + r.AL);
+                    termPrint("AX: " + r.AX);
+                }
+            }
+
+            else {
+                termPrint('<span style="color:#f44">Unknown command: ' + base + '. Type "help" for commands.</span>');
+            }
+        }
+
+        // ── Other buttons ─────────────────────────────────────────────────
+
+        function clearAll() {
+            document.getElementById("hexIn").value = "";
+            document.getElementById("asmOut").value = "";
+        }
+
+        function copyAsm() {
+            const v = document.getElementById("asmOut").value;
+            if (!v) return;
+            navigator.clipboard.writeText(v);
+            termPrint("Assembly copied to clipboard.");
+        }
+
+        function downloadAsm() {
+            const v = document.getElementById("asmOut").value;
+            if (!v) return;
+            const a = document.createElement("a");
+            a.href = URL.createObjectURL(new Blob([v], { type: "text/plain" }));
+            a.download = "program.gasm";
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        }
+
+        function saveToEmulator() {
+            const v = document.getElementById("asmOut").value;
+            if (!v) return;
+            localStorage.setItem("DecompiledProg", v);
+            termPrint('Saved to localStorage as "DecompiledProg".');
+        }
+
+        function loadFile() {
+            document.getElementById("fileInput").click();
+        }
+
+        function readFile(input) {
+            const file = input.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = e => {
+                document.getElementById("hexIn").value = e.target.result;
+                termPrint("Loaded: " + file.name);
+            };
+            reader.readAsText(file);
+        }
+
+        function loadSample() {
+            document.getElementById("hexIn").value =
+`15 0xF 0xFF0000
+15 0x3 This text is Red
+10 0x10
+15 0xF 0x000FFF
+15 0x3 This text is Blue
+10 0x10
+15 0xF DFC
+15 0x3 Back to Green
+10 0x10
+12 0x0 6
+16 0x0 2
+15 0x3 Wow, 8 is coming!
+10 0x10
+10 0x11
+20`;
+            termPrint("Sample loaded.");
+        }
+
+        // focus terminal input on click anywhere in terminal box
+        document.addEventListener("DOMContentLoaded", () => {
+            document.getElementById("termOutput").addEventListener("click", () => {
+                document.getElementById("termInput").focus();
+            });
+            termPrint('TinBIOS Terminal. Type "help" for commands.');
+        });
+    </script>
+
+</body>
+
+</html>
