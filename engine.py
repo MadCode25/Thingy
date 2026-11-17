@@ -1,5 +1,7 @@
 import struct
 import os
+import re
+import sys
 import time
 import socket
 import urllib.request
@@ -7,18 +9,18 @@ import urllib.request
 # Force IPv4 so Python doesn't stall on ISP IPv6 routing
 old_getaddrinfo = socket.getaddrinfo
 def ipv4_only(*args, **kwargs):
-    return [info for info in old_getaddrinfo(*args, **kwargs) if info[0] == socket.AF_INET]
+    return [info for info in old_getaddrinfo(*args, **kwargs) if info == socket.AF_INET]
 socket.getaddrinfo = ipv4_only
 
 MAGIC_BYTES = b"ENPY"  # 4 bytes
-FILE_VERSION = 2       # 1 byte
+FILE_VERSION = 4       # 1 byte
 
 UPDATELINK = "https://raw.githubusercontent.com/MadCode25/Thingy/refs/heads/main/updatedEngine.py"
 
 def check_for_updates():
     print("Checking for updates...")
     try:
-        # Bypass any broken Windows proxy settings and avoid GitHub's 5-min cache
+        # 1. Fetch remote script from GitHub (bypassing cache and proxy)
         opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
         opener.addheaders = [("User-Agent", "ENPYEngine/1.0")]
         
@@ -26,11 +28,31 @@ def check_for_updates():
         with opener.open(url, timeout=5) as response:
             remote_code = response.read().decode("utf-8")
 
-        # Compare against the current script if running as .py, or save the update
-        with open("updatedEngine.py", "w", encoding="utf-8") as f:
-            f.write(remote_code)
+        # 2. Extract FILE_VERSION = <number> from the remote code text
+        match = re.search(r"^FILE_VERSION\s*=\s*(\d+)", remote_code, re.MULTILINE)
+        if not match:
+            print("Could not read FILE_VERSION from remote script.")
+            return
+
+        remote_version = int(match.group(1))
+
+        # 3. Compare remote version against current FILE_VERSION
+        if remote_version > FILE_VERSION:
+            print(f"Update available! (v{FILE_VERSION} -> v{remote_version}) Applying update...")
             
-        print("Engine synced with latest GitHub version!")
+            # If running as a raw .py script, overwrite self and restart
+            if not getattr(sys, "frozen", False):
+                with open(__file__, "w", encoding="utf-8") as f:
+                    f.write(remote_code)
+                print("Update complete! Restarting...")
+                os.execv(sys.executable, [sys.executable] + sys.argv)
+            else:
+                # If running as a compiled .exe, save the new script alongside it
+                with open("engine.new.py", "w", encoding="utf-8") as f:
+                    f.write(remote_code)
+                print("Saved update to engine.new.py!")
+        else:
+            print(f"Engine is up to date (v{FILE_VERSION}).")
 
     except Exception as e:
         print(f"Update check skipped (offline or unavailable): {e}")
