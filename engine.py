@@ -15,7 +15,7 @@ socket.getaddrinfo = ipv4_only
 MAGIC_BYTES = b"ENPY"  # 4 bytes
 FILE_VERSION = 4       # 1 byte
 
-UPDATELINK = "https://raw.githubusercontent.com/MadCode25/Thingy/refs/heads/main/updatedEngine.py"
+UPDATELINK = "https://raw.githubusercontent.com/MadCode25/Thingy/refs/heads/main/engine.py"
 
 def check_for_updates():
     print("Checking for updates...")
