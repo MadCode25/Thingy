@@ -9,7 +9,7 @@ import urllib.request
 # Force IPv4 so Python doesn't stall on ISP IPv6 routing
 old_getaddrinfo = socket.getaddrinfo
 def ipv4_only(*args, **kwargs):
-    return [info for info in old_getaddrinfo(*args, **kwargs) if info == socket.AF_INET]
+    return [info for info in old_getaddrinfo(*args, **kwargs) if info[0] == socket.AF_INET]
 socket.getaddrinfo = ipv4_only
 
 MAGIC_BYTES = b"ENPY"  # 4 bytes
