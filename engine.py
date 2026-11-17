@@ -5,6 +5,7 @@ import sys
 import time
 import socket
 import urllib.request
+import subprocess
 
 # Force IPv4 so Python doesn't stall on ISP IPv6 routing
 old_getaddrinfo = socket.getaddrinfo
@@ -13,7 +14,7 @@ def ipv4_only(*args, **kwargs):
 socket.getaddrinfo = ipv4_only
 
 MAGIC_BYTES = b"ENPY"  # 4 bytes
-FILE_VERSION = 4       # 1 byte
+FILE_VERSION = 5       # 1 byte
 
 UPDATELINK = "https://raw.githubusercontent.com/MadCode25/Thingy/refs/heads/main/engine.py"
 
@@ -40,12 +41,13 @@ def check_for_updates():
         if remote_version > FILE_VERSION:
             print(f"Update available! (v{FILE_VERSION} -> v{remote_version}) Applying update...")
             
-            # If running as a raw .py script, overwrite self and restart
             if not getattr(sys, "frozen", False):
                 with open(__file__, "w", encoding="utf-8") as f:
                     f.write(remote_code)
                 print("Update complete! Restarting...")
-                os.execv(sys.executable, [sys.executable] + sys.argv)
+                subprocess.run([sys.executable] + sys.argv)
+                sys.exit()
+
             else:
                 # If running as a compiled .exe, save the new script alongside it
                 with open("engine.new.py", "w", encoding="utf-8") as f:
@@ -71,7 +73,7 @@ def load_game(filename):
         if magic != MAGIC_BYTES:
             raise ValueError("Invalid file format! Not a valid .enpy file.")
         
-        version = struct.unpack("<B", f.read(1))
+        version = struct.unpack("<B", f.read(1))[0]
         
         raw_data = f.read(12)
         health, x, y = struct.unpack("<iff", raw_data)
