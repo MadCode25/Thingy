@@ -6,7 +6,7 @@ import time
 import socket
 import urllib.request
 import subprocess
-
+import shutil
 # Force IPv4 so Python doesn't stall on ISP IPv6 routing
 old_getaddrinfo = socket.getaddrinfo
 def ipv4_only(*args, **kwargs):
@@ -14,49 +14,80 @@ def ipv4_only(*args, **kwargs):
 socket.getaddrinfo = ipv4_only
 
 MAGIC_BYTES = b"ENPY"  # 4 bytes
-FILE_VERSION = 5       # 1 byte
+FILE_VERSION = 7       # 1 byte
 
 UPDATELINK = "https://raw.githubusercontent.com/MadCode25/Thingy/refs/heads/main/engine.py"
 
 def check_for_updates():
     print("Checking for updates...")
+    part_file = "upd.part"
+
     try:
-        # 1. Fetch remote script from GitHub (bypassing cache and proxy)
         opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
         opener.addheaders = [("User-Agent", "ENPYEngine/1.0")]
-        
         url = f"{UPDATELINK}?t={int(time.time())}"
-        with opener.open(url, timeout=5) as response:
-            remote_code = response.read().decode("utf-8")
 
-        # 2. Extract FILE_VERSION = <number> from the remote code text
-        match = re.search(r"^FILE_VERSION\s*=\s*(\d+)", remote_code, re.MULTILINE)
-        if not match:
-            print("Could not read FILE_VERSION from remote script.")
+        with opener.open(url, timeout=5) as response:
+            # Grab total file size from server headers (if provided)
+            total_bytes = int(response.headers.get("Content-Length", 0))
+            downloaded = 0
+            chunk_size = 8192  # 8 KB per chunk (zero RAM spike)
+
+            with open(part_file, "wb") as out_file:
+                while True:
+                    chunk = response.read(chunk_size)
+                    if not chunk:
+                        break
+                    out_file.write(chunk)
+                    downloaded += len(chunk)
+
+                    # Draw live progress bar on the same console line using \r
+                    if total_bytes > 0:
+                        percent = int((downloaded / total_bytes) * 100)
+                        filled = int(20 * downloaded // total_bytes)
+                        bar = "█" * filled + "░" * (20 - filled)
+                        print(f"\rDownloading: [{bar}] {percent}% ({downloaded}/{total_bytes} B)", end="", flush=True)
+                    else:
+                        print(f"\rDownloading: {downloaded} bytes...", end="", flush=True)
+
+        print()  # Move to a clean new line after download finishes
+
+        # Read ONLY the first 30 lines of 'upd.part' to find FILE_VERSION
+        remote_version = None
+        with open(part_file, "r", encoding="utf-8", errors="ignore") as f:
+            for _ in range(30):
+                line = f.readline()
+                if not line:
+                    break
+                match = re.match(r"^FILE_VERSION\s*=\s*(\d+)", line)
+                if match:
+                    remote_version = int(match.group(1))
+                    break
+
+        if remote_version is None:
+            print("Could not find FILE_VERSION in update.")
+            os.remove(part_file)
             return
 
-        remote_version = int(match.group(1))
-
-        # 3. Compare remote version against current FILE_VERSION
         if remote_version > FILE_VERSION:
             print(f"Update available! (v{FILE_VERSION} -> v{remote_version}) Applying update...")
-            
+
             if not getattr(sys, "frozen", False):
-                with open(__file__, "w", encoding="utf-8") as f:
-                    f.write(remote_code)
+                os.replace(part_file, __file__)
                 print("Update complete! Restarting...")
                 subprocess.run([sys.executable] + sys.argv)
                 sys.exit()
-
             else:
-                # If running as a compiled .exe, save the new script alongside it
-                with open("engine.new.py", "w", encoding="utf-8") as f:
-                    f.write(remote_code)
+                os.replace(part_file, "engine.new.py")
                 print("Saved update to engine.new.py!")
         else:
+            os.remove(part_file)
             print(f"Engine is up to date (v{FILE_VERSION}).")
 
     except Exception as e:
+        print()
+        if os.path.exists(part_file):
+            os.remove(part_file)
         print(f"Update check skipped (offline or unavailable): {e}")
 
 def save_game(filename, player_health, player_x, player_y):
